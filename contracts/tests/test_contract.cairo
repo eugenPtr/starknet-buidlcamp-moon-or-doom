@@ -1,9 +1,12 @@
-use snforge_std::{declare, ContractClassTrait, start_cheat_block_timestamp_global, start_cheat_caller_address_global};
+use snforge_std::{
+    declare, ContractClassTrait, start_cheat_block_timestamp_global,
+    start_cheat_caller_address_global
+};
 use moon_or_doom::{RoundState, Bet, IMoonOrDoomDispatcher, IMoonOrDoomDispatcherTrait};
 use starknet::{contract_address_const};
 
- // Helper function to deploy the contract
- fn deploy_contract() -> IMoonOrDoomDispatcher {
+// Helper function to deploy the contract
+fn deploy_contract() -> IMoonOrDoomDispatcher {
     let contract = declare("MoonOrDoom").unwrap();
     let (contract_address, _) = contract.deploy(@array![]).unwrap();
 
@@ -11,7 +14,7 @@ use starknet::{contract_address_const};
 }
 
 // ======================================================
-// 21 Sept Deliverables Tests   
+// 21 Sept Deliverables Tests
 // ======================================================
 
 #[test]
@@ -29,7 +32,7 @@ fn start_round_when_no_active_round_should_create_round() {
 }
 
 #[test]
-#[should_panic(expected: ('Round is already active', ))]
+#[should_panic(expected: ('Round is already active',))]
 fn start_round_when_active_round_should_panic() {
     let mut contract = deploy_contract();
     let start_price: u128 = 1000;
@@ -56,7 +59,7 @@ fn end_round_when_active_round_should_end_round() {
 }
 
 #[test]
-#[should_panic(expected: ('No active round to end', ))]
+#[should_panic(expected: ('No active round to end',))]
 fn end_round_when_no_active_round_should_panic() {
     let mut contract = deploy_contract();
     let start_price: u128 = 1000;
@@ -65,7 +68,7 @@ fn end_round_when_no_active_round_should_panic() {
     start_cheat_block_timestamp_global(100);
     contract.start_round(start_price);
     start_cheat_block_timestamp_global(200);
-    contract.end_round(end_price); 
+    contract.end_round(end_price);
     contract.end_round(end_price); // This should panic
 }
 
@@ -98,7 +101,7 @@ fn bet_when_active_round_should_place_bet() {
 }
 
 #[test]
-#[should_panic(expected: ('Round is not active', ))]
+#[should_panic(expected: ('Round is not active',))]
 fn bet_when_no_active_round_should_panic() {
     let mut contract = deploy_contract();
     let start_price: u128 = 1000;
@@ -136,7 +139,9 @@ fn get_round_info_should_return_correct_details() {
     contract.start_round(start_price);
 
     // Get round info
-    let (round_count, state, start_timestamp, end_timestamp, round_start_price, round_end_price) = contract.get_round_info();
+    let (round_count, state, start_timestamp, end_timestamp, round_start_price, round_end_price) =
+        contract
+        .get_round_info();
 
     // Assert correct details
     assert(round_count == 1, 'Round count should be 1');
@@ -151,7 +156,9 @@ fn get_round_info_should_return_correct_details() {
     contract.end_round(end_price);
 
     // Get updated round info
-    let (round_count, state, start_timestamp, end_timestamp, round_start_price, round_end_price) = contract.get_round_info();
+    let (round_count, state, start_timestamp, end_timestamp, round_start_price, round_end_price) =
+        contract
+        .get_round_info();
 
     // Assert updated details
     assert(state == RoundState::Ended, 'Round state should be Ended');

@@ -20,7 +20,7 @@ pub trait IMoonOrDoom<TContractState> {
     fn bet(ref self: TContractState, bet: Bet);
 
     fn get_round_info(self: @TContractState) -> (usize, RoundState, u64, u64, u128, u128);
-    fn get_bet_info(self: @TContractState, user:ContractAddress, round_index: usize) -> Bet;
+    fn get_bet_info(self: @TContractState, user: ContractAddress, round_index: usize) -> Bet;
 }
 
 #[starknet::contract]
@@ -28,8 +28,7 @@ mod MoonOrDoom {
     use starknet::contract_address::ContractAddress;
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::storage::{
-        Map, StoragePointerReadAccess,
-        StoragePointerWriteAccess, StoragePathEntry
+        Map, StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry
     };
     use super::{RoundState, Bet};
 
@@ -46,7 +45,7 @@ mod MoonOrDoom {
     struct Storage {
         round_count: usize,
         rounds: Map::<usize, Round>,
-        bets: Map::<ContractAddress, Map::<usize, Bet>>,
+        bets: Map::<ContractAddress, Map<usize, Bet>>,
     }
 
     #[constructor]
@@ -56,10 +55,9 @@ mod MoonOrDoom {
 
     #[abi(embed_v0)]
     impl MoonOrDoomImpl of super::IMoonOrDoom<ContractState> {
-
         fn start_round(ref self: ContractState, start_price: u128) {
             let round_count = self.round_count.read();
-            
+
             // Check if there's an active round
             if round_count > 0 {
                 let current_round = self.rounds.entry(round_count).read();
@@ -98,16 +96,23 @@ mod MoonOrDoom {
             let caller = get_caller_address();
 
             assert(round.state == RoundState::Active, 'Round is not active');
-            
+
             self.bets.entry(caller).entry(round_count.into()).write(bet);
         }
 
-        fn get_round_info(self: @ContractState) -> (usize,RoundState, u64, u64, u128, u128) {
+        fn get_round_info(self: @ContractState) -> (usize, RoundState, u64, u64, u128, u128) {
             let round_count = self.round_count.read();
 
             let round = self.rounds.entry(round_count).read();
-            
-            (round_count, round.state, round.start_timestamp, round.end_timestamp, round.start_price, round.end_price)
+
+            (
+                round_count,
+                round.state,
+                round.start_timestamp,
+                round.end_timestamp,
+                round.start_price,
+                round.end_price
+            )
         }
 
         fn get_bet_info(self: @ContractState, user: ContractAddress, round_index: usize) -> Bet {
