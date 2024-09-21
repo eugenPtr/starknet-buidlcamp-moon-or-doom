@@ -1,4 +1,4 @@
-import { Account, RpcProvider, Contract, } from 'starknet';
+import { Account, RpcProvider, Contract, CairoCustomEnum } from 'starknet';
 import { RoundInfo } from './types';
 
 // Shared instances
@@ -38,7 +38,6 @@ async function initializeContract() {
 export async function startRound() {
   await initializeContract();
 
-    console.log(contract);
   const result = await contract.start_round(1000);
   
   // Wait for the transaction to be confirmed
@@ -47,13 +46,13 @@ export async function startRound() {
   return result;
 }
 
-export enum Bet {
-  DEFAULT = 0,
-  MOON = 1,
-  DOOM = 2
+
+export const Bet = {
+  MOON: new CairoCustomEnum({MOON: 0}),
+  DOOM: new CairoCustomEnum({DOOM: 1})
 }
 
-export async function placeBet(bet: Bet) {
+export async function placeBet(bet: CairoCustomEnum) {
   await initializeContract();
 
   const result = await contract.bet(bet);
@@ -69,7 +68,7 @@ export async function getRoundInfo(): Promise<RoundInfo> {
 
   try {
     const result = await contract.get_round_info();
-    console.log("Result: ", result[1].variant.Active);
+    
     return {
       roundId: Number(result[0]),
       isActive: Boolean(result[1].variant.Active),
