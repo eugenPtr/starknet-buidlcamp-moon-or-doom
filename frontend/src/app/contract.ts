@@ -1,4 +1,5 @@
-import { Account, RpcProvider, Contract,  } from 'starknet';
+import { Account, RpcProvider, Contract, } from 'starknet';
+import { RoundInfo } from './types';
 
 // Shared instances
 let provider: RpcProvider;
@@ -63,7 +64,7 @@ export async function placeBet(bet: Bet) {
   return result;
 }
 
-export async function getRoundInfo() {
+export async function getRoundInfo(): Promise<RoundInfo> {
   await initializeContract();
 
   try {
@@ -76,7 +77,6 @@ export async function getRoundInfo() {
       endTimestamp: Number(result[3]),
       startPrice: Number(result[4]),
       endPrice: Number(result[5]),
-      totalBets: 0, // Add this line. You may need to fetch this from the contract if available
     };
   } catch (error) {
     console.error('Failed to fetch round info:', error);
@@ -86,7 +86,7 @@ export async function getRoundInfo() {
       startTimestamp: 0,
       endTimestamp: 0,
       startPrice: 0,
-      endPrice: 0
+      endPrice: 0,
     };
   }
 }

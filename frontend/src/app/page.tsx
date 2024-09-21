@@ -3,18 +3,19 @@
 import Image from "next/image";
 import React, { useState, useEffect } from 'react';
 import { startRound, placeBet, getRoundInfo, endRound, Bet } from './contract';
+import { RoundInfo } from './types';
 
 export default function Home() {
   const [isStartingRound, setIsStartingRound] = useState(false);
   const [isEndingRound, setIsEndingRound] = useState(false);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [roundInfo, setRoundInfo] = useState({ 
+  const [roundInfo, setRoundInfo] = useState<RoundInfo>({ 
     roundId: 0, 
     startPrice: 0, 
     endPrice: 0, 
-    totalBets: 0, 
     isActive: false, 
-    startTimestamp: 0 
+    startTimestamp: 0,
+    endTimestamp: 0
   });
   const [elapsedTime, setElapsedTime] = useState(0);
 
