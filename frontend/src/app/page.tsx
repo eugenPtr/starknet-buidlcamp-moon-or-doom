@@ -2,96 +2,91 @@
 
 import Image from "next/image";
 import React, { useState, useEffect } from 'react';
-import { startRound, placeBet, getRoundInfo, endRound, Bet } from './contract';
+import { Bet } from './contract';
 import { RoundInfo } from './types';
+import WalletBar from '../components/WalletBar';
+import { useContract, useAccount, useReadContract, useSendTransaction } from "@starknet-react/core";
+import { type Abi, CairoCustomEnum } from "starknet";
+
+import ABI from "../abi/moon_or_doom.json";
+
+const CONTRACT_ADDRESS = "0x04cfe4fbea86ab273e75f6e0fdaca06de1c3a8495dd3d5a65afa4822339306ef";
 
 export default function Home() {
-  const [isStartingRound, setIsStartingRound] = useState(false);
-  const [isEndingRound, setIsEndingRound] = useState(false);
-  const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [roundInfo, setRoundInfo] = useState<RoundInfo>({ 
-    roundId: 0, 
-    startPrice: 0, 
-    endPrice: 0, 
-    isActive: false, 
-    startTimestamp: 0,
-    endTimestamp: 0
-  });
+	const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  useEffect(() => {
-    const fetchRoundInfo = async () => {
-      try {
-        const info = await getRoundInfo();
-        setRoundInfo(info);
-      } catch (error) {
-        console.error('Failed to fetch round info:', error);
-      }
-    };
+	const { contract } = useContract({ abi: ABI as Abi, address: CONTRACT_ADDRESS });
+	const { address: userAddress } = useAccount();
+	const { data: roundInfoData, error: roundInfoError } = useReadContract({abi: ABI, functionName: "get_round_info", address: CONTRACT_ADDRESS, args: []});
 
-    fetchRoundInfo(); // Fetch immediately on component mount
+	const { send: sendStartRoundTx, error: errorSendStartRoundTx, isPending: isStartingRound } = useSendTransaction({ 
+		calls: 
+			contract && userAddress 
+				? [contract.populate("start_round", [1000])] 
+				: undefined, 
+	});
 
-    const intervalId = setInterval(fetchRoundInfo, 10000); // Update every 10 seconds
+	const { send: sendEndRoundTx, error: errorSendEndRoundTx, isPending: isEndingRound } = useSendTransaction({ 
+		calls: 
+			contract && userAddress 
+				? [contract.populate("end_round", [5000])] 
+				: undefined, 
+	});
 
-    return () => clearInterval(intervalId); // Clean up on component unmount
-  }, []);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (roundInfo.isActive && roundInfo.startTimestamp > 0) {
-      timer = setInterval(() => {
-        const now = Math.floor(Date.now() / 1000);
-        setElapsedTime(now - roundInfo.startTimestamp);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [roundInfo.isActive, roundInfo.startTimestamp]);
+	const { send: sendPlaceBetTx, error: errorPlaceBetTx, isPending: isPlacingBet } = useSendTransaction({ 
+		calls: 
+			contract && userAddress 
+				? [contract.populate("bet", [bet])] 
+				: undefined, 
+	});
 
   const handleStartRound = async () => {
-    setIsStartingRound(true);
-    try {
-      const result = await startRound();
-      console.log('Round started successfully:', result);
-      // You might want to add some success feedback here
-    } catch (error) {
-      console.error('Failed to start round:', error);
-      // You might want to add some error feedback here
-    } finally {
-      setIsStartingRound(false);
-    }
+    await sendStartRoundTx();
   };
 
   const handleEndRound = async () => {
-    setIsEndingRound(true);
-    try {
-      const result = await endRound();
-      console.log('Round ended successfully:', result);
-      // You might want to add some success feedback here
-    } catch (error) {
-      console.error('Failed to end round:', error);
-      // You might want to add some error feedback here
-    } finally {
-      setIsEndingRound(false);
-    }
+    await sendEndRoundTx();
   };
 
   const handlePlaceBet = async (isMoon: boolean) => {
-    setIsPlacingBet(true);
-    try {
-      const result = await placeBet(isMoon ? Bet.MOON : Bet.DOOM);
-      console.log(`Bet placed successfully (${isMoon ? 'Moon' : 'Doom'}):`, result);
-      // You might want to add some success feedback here
-    } catch (error) {
-      console.error('Failed to place bet:', error);
-      // You might want to add some error feedback here
-    } finally {
-      setIsPlacingBet(false);
-    }
+		setBet(isMoon ? Bet.MOON : Bet.DOOM);
+    await sendPlaceBetTx();
   };
+
+	const RoundInfo = () => {
+		if (roundInfoError) {
+			return <p>Error fetching round info: {roundInfoError.message}</p>;
+		} else if (roundInfoData) {
+			const roundInfo : RoundInfo = {
+				roundId: Number(roundInfoData[0]),
+				isActive: Boolean(roundInfoData[1].variant.Active),
+				startTimestamp: Number(roundInfoData[2]),
+				endTimestamp: Number(roundInfoData[3]),
+				startPrice: Number(roundInfoData[4]),
+				endPrice: Number(roundInfoData[5]),
+			}
+
+			return (
+				<ul>
+					<li>Round ID: {roundInfo.roundId}</li>
+          <li>Start Price: ${roundInfo.startPrice.toFixed(2)}</li>
+          <li>Current/End Price: ${roundInfo.endPrice.toFixed(2)}</li>
+          <li>Status: {roundInfo.isActive ? 'Active' : 'Inactive'}</li>
+          <li>Elapsed Time: {elapsedTime} seconds</li>
+				</ul>
+			)
+		}
+	};
+
+	const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+      <header>
+				<WalletBar />
+			</header>
+			<main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <Image
@@ -107,12 +102,7 @@ export default function Home() {
         </div> */}
 
         <div className="flex flex-col gap-4 items-center">
-          <h2 className="text-xl font-bold">Round Information</h2>
-          <p>Round ID: {roundInfo.roundId}</p>
-          <p>Start Price: ${roundInfo.startPrice.toFixed(2)}</p>
-          <p>Current/End Price: ${roundInfo.endPrice.toFixed(2)}</p>
-          <p>Status: {roundInfo.isActive ? 'Active' : 'Inactive'}</p>
-          <p>Elapsed Time: {elapsedTime} seconds</p>
+          <RoundInfo />
         </div>
 
         <div className="flex gap-4 items-center justify-center flex-col sm:flex-row">
@@ -150,7 +140,7 @@ export default function Home() {
         <div className="flex flex-col gap-4 items-center justify-center w-full max-w-md">
           <button
             onClick={handleStartRound}
-            disabled={isStartingRound || roundInfo.isActive}
+            disabled={isStartingRound || isRoundActive}
             className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
           >
             
@@ -159,7 +149,7 @@ export default function Home() {
 
           <button
             onClick={handleEndRound}
-            disabled={isEndingRound || !roundInfo.isActive}
+            disabled={isEndingRound || !isRoundActive}
             className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-red-500 text-background gap-2 hover:bg-red-600 dark:hover:bg-red-400 text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
           >
            
