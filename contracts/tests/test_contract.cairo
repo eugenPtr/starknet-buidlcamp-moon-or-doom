@@ -1,8 +1,7 @@
 use snforge_std::{
-    declare, ContractClassTrait, start_cheat_block_timestamp_global,
-    start_cheat_caller_address_global, start_mock_call
+    declare, ContractClassTrait
 };
-use moon_or_doom::contract::{RoundState, Bet, IMoonOrDoomDispatcher, IMoonOrDoomDispatcherTrait};
+use moon_or_doom::contract::IMoonOrDoomDispatcher;
 use starknet::ContractAddress;
 
 // Helper function to deploy the contract
@@ -20,6 +19,8 @@ mod start_round_tests {
     use super::deploy_contracts;
     use snforge_std::start_cheat_block_timestamp_global;
     use moon_or_doom::contract::{RoundState, IMoonOrDoomDispatcherTrait};
+    use moon_or_doom::contract::MoonOrDoom::{RoundStarted, Event};
+    use snforge_std::{spy_events, EventSpyAssertionsTrait};
 
     #[test]
     fn start_round_when_no_active_round_should_create_round() {
@@ -44,12 +45,32 @@ mod start_round_tests {
         contract.start_round(start_price);
         contract.start_round(start_price); // This should panic
     }
+
+    #[test]
+    fn start_round_should_emit_event() {
+        let (contract, _) = deploy_contracts();
+        let start_price: u128 = 1000;
+        let mut spy = spy_events();
+
+        start_cheat_block_timestamp_global(100);
+
+        let expected_event = Event::RoundStarted(RoundStarted { 
+            index: 1,
+            start_price: start_price,
+            start_timestamp: 100,
+        });
+        contract.start_round(start_price);
+        spy.assert_emitted(@array![(contract.contract_address, expected_event)]); 
+    }
 }
 
 mod end_round_tests {
     use super::deploy_contracts;
-    use snforge_std::start_cheat_block_timestamp_global;
-    use moon_or_doom::contract::{RoundState, IMoonOrDoomDispatcherTrait};
+    use starknet::contract_address_const;
+    use snforge_std::{start_cheat_block_timestamp_global, start_mock_call, start_cheat_caller_address_global};
+    use moon_or_doom::contract::{Bet,RoundState, IMoonOrDoomDispatcherTrait};
+    use moon_or_doom::contract::MoonOrDoom::{RoundEnded, Event};
+    use snforge_std::{spy_events, EventSpyAssertionsTrait};
 
     #[test]
     fn end_round_when_active_round_should_end_round() {
@@ -90,13 +111,48 @@ mod end_round_tests {
 
         // Attempt to end a round without starting one first
         contract.end_round(end_price); // This should panic
+    }    
+
+    #[test]
+    fn end_round_should_emit_event() {
+        let (contract, strk_mock_address) = deploy_contracts();
+        let start_price: u128 = 1000;
+        let end_price: u128 = 1500;
+        let mut spy = spy_events();
+
+        start_cheat_block_timestamp_global(100);
+        contract.start_round(start_price);
+        start_cheat_block_timestamp_global(200);
+
+        let caller = contract_address_const::<1>();
+        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(strk_mock_address, selector!("transfer_from"), array![true]);
+        start_mock_call(strk_mock_address, selector!("transfer"), array![true]);
+
+        // Place a bet
+        start_cheat_caller_address_global(caller);
+        contract.bet(Bet::MOON);
+
+        let expected_event = Event::RoundEnded(RoundEnded { 
+            index: 1,
+            start_timestamp: 100,
+            end_timestamp: 200,
+            start_price: start_price,   
+            end_price: end_price,
+            moon_bets_count: 1,
+            doom_bets_count: 0,
+        });
+        contract.end_round(end_price);
+        spy.assert_emitted(@array![(contract.contract_address, expected_event)]); 
     }
 }
 
 mod bet_tests {
     use super::deploy_contracts;
     use snforge_std::{start_cheat_caller_address_global, start_mock_call};
+    use snforge_std::{spy_events, EventSpyAssertionsTrait};
     use moon_or_doom::contract::{Bet, IMoonOrDoomDispatcherTrait};
+    use moon_or_doom::contract::MoonOrDoom::{BetPlaced, Event};
     use starknet::contract_address_const;
 
     #[test]
@@ -167,6 +223,65 @@ mod bet_tests {
 
         // Attempt to place another bet in the same round
         contract.bet(Bet::DOOM); // This should panic
+    }
+
+    #[test]
+    #[should_panic(expected: ('Not enough allowance',))]
+    fn bet_when_not_enough_allowance_should_panic() {
+        let (contract, _) = deploy_contracts();
+        let caller = contract_address_const::<1>();
+        let start_price: u128 = 1000;
+
+        // Start a round
+        contract.start_round(start_price);
+
+        // Attempt to place a bet without enough allowance
+        start_cheat_caller_address_global(caller);
+        contract.bet(Bet::MOON); // This should panic
+    }
+
+    #[test]
+    #[should_panic(expected: ('Failed to transfer STRK',))]
+    fn bet_when_transfer_fails_should_panic() {
+        let (contract, strk_mock_address) = deploy_contracts();
+        let caller = contract_address_const::<1>();
+        let start_price: u128 = 1000;
+
+        // Start a round
+        contract.start_round(start_price);
+
+        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(strk_mock_address, selector!("transfer_from"), array![false]);
+
+        // Attempt to place a bet
+        start_cheat_caller_address_global(caller);
+        contract.bet(Bet::MOON); // This should panic
+    }
+
+    #[test]
+    fn bet_should_emit_event() {
+        let (contract, strk_mock_address) = deploy_contracts();
+        let caller = contract_address_const::<1>();
+        let start_price: u128 = 1000;
+        let mut spy = spy_events();
+
+        // Start a round
+        contract.start_round(start_price);
+
+        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(strk_mock_address, selector!("transfer_from"), array![true]);
+
+        // Place a bet
+        start_cheat_caller_address_global(caller);
+        let bet = Bet::MOON;
+
+        let expected_event = Event::BetPlaced(BetPlaced { 
+            round_index: 1,
+            user: caller,
+            bet: bet,
+        });
+        contract.bet(bet);
+        spy.assert_emitted(@array![(contract.contract_address, expected_event)]); 
     }
 }
 
