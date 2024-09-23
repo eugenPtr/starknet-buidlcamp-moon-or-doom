@@ -27,7 +27,8 @@ pub mod MoonOrDoom {
     use starknet::contract_address::ContractAddress;
     use starknet::{get_block_timestamp, get_caller_address, get_contract_address};
     use starknet::storage::{
-        Map, StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Vec, MutableVecTrait
+        Map, StoragePointerReadAccess, StoragePointerWriteAccess, StoragePathEntry, Vec,
+        MutableVecTrait
     };
     use super::{RoundState, Bet};
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
@@ -106,8 +107,9 @@ pub mod MoonOrDoom {
                 assert(current_round.state == RoundState::Ended, 'Round is already active');
             }
 
-            // TODO: Remove this. Just for testing. To be replace with assert_only_owner from OZ Ownable
-            // This tweak helps the person who tests the dapp to start a round, bet from multiple accounts and collect the fee at the end
+            // TODO: Remove this. Just for testing. To be replace with assert_only_owner from OZ
+            // Ownable This tweak helps the person who tests the dapp to start a round, bet from
+            // multiple accounts and collect the fee at the end
             self.fee_recipient.write(get_caller_address());
 
             let round = Round {
@@ -123,11 +125,14 @@ pub mod MoonOrDoom {
             self.rounds.entry(new_round_index).write(round);
             self.round_count.write(new_round_index);
 
-            self.emit(RoundStarted {
-                index: new_round_index,
-                start_timestamp: get_block_timestamp(),
-                start_price: start_price,
-            });
+            self
+                .emit(
+                    RoundStarted {
+                        index: new_round_index,
+                        start_timestamp: get_block_timestamp(),
+                        start_price: start_price,
+                    }
+                );
         }
 
         fn end_round(ref self: ContractState, end_price: u128) {
@@ -152,39 +157,61 @@ pub mod MoonOrDoom {
             }
 
             let fee_amount = total_bets_count.into() * self.fee_cut.read() / 100;
-            let success = ERC20ABIDispatcher{ contract_address: self.strk_contract.read() }.transfer_from(get_contract_address(), self.fee_recipient.read(), fee_amount);
+            let success = ERC20ABIDispatcher { contract_address: self.strk_contract.read() }
+                .transfer_from(get_contract_address(), self.fee_recipient.read(), fee_amount);
             assert(success, 'Failed to collect fee');
 
             match round.end_price >= round.start_price {
                 true => {
                     // Moon won
-                    let reward_per_winner = (moon_bets_count.into() - fee_amount) / total_bets_count.into();
-                    for i in 0..moon_bets_count {
-                        let winner_address = self.moon_bets_in_round.entry(last_round_index).at(i).read();
-                        let success = ERC20ABIDispatcher{ contract_address: self.strk_contract.read() }.transfer(winner_address, reward_per_winner);
-                        assert(success, 'Failed to transfer STRK');
-                    };
+                    let reward_per_winner = (moon_bets_count.into() - fee_amount)
+                        / total_bets_count.into();
+                    for i in 0
+                        ..moon_bets_count {
+                            let winner_address = self
+                                .moon_bets_in_round
+                                .entry(last_round_index)
+                                .at(i)
+                                .read();
+                            let success = ERC20ABIDispatcher {
+                                contract_address: self.strk_contract.read()
+                            }
+                                .transfer(winner_address, reward_per_winner);
+                            assert(success, 'Failed to transfer STRK');
+                        };
                 },
                 false => {
                     // Doom won
-                    let reward_per_winner = (doom_bets_count.into() - fee_amount) / total_bets_count.into();
-                    for i in 0..doom_bets_count {
-                        let winner_address = self.doom_bets_in_round.entry(last_round_index).at(i).read();
-                        let success = ERC20ABIDispatcher{ contract_address: self.strk_contract.read() }.transfer(winner_address, reward_per_winner);
-                        assert(success, 'Failed to transfer STRK');
-                    };
+                    let reward_per_winner = (doom_bets_count.into() - fee_amount)
+                        / total_bets_count.into();
+                    for i in 0
+                        ..doom_bets_count {
+                            let winner_address = self
+                                .doom_bets_in_round
+                                .entry(last_round_index)
+                                .at(i)
+                                .read();
+                            let success = ERC20ABIDispatcher {
+                                contract_address: self.strk_contract.read()
+                            }
+                                .transfer(winner_address, reward_per_winner);
+                            assert(success, 'Failed to transfer STRK');
+                        };
                 }
             }
 
-            self.emit(RoundEnded {
-                index: last_round_index,
-                start_timestamp: round.start_timestamp,
-                end_timestamp: round.end_timestamp,
-                start_price: round.start_price,
-                end_price: round.end_price,
-                moon_bets_count: moon_bets_count,
-                doom_bets_count: doom_bets_count,
-            });
+            self
+                .emit(
+                    RoundEnded {
+                        index: last_round_index,
+                        start_timestamp: round.start_timestamp,
+                        end_timestamp: round.end_timestamp,
+                        start_price: round.start_price,
+                        end_price: round.end_price,
+                        moon_bets_count: moon_bets_count,
+                        doom_bets_count: doom_bets_count,
+                    }
+                );
         }
 
         fn bet(ref self: ContractState, bet: Bet) {
@@ -194,11 +221,15 @@ pub mod MoonOrDoom {
 
             assert(round.state == RoundState::Active, 'Round is not active');
 
-            let allowed_to_transfer = ERC20ABIDispatcher{ contract_address: self.strk_contract.read() }.allowance(caller, get_contract_address());
+            let allowed_to_transfer = ERC20ABIDispatcher {
+                contract_address: self.strk_contract.read()
+            }
+                .allowance(caller, get_contract_address());
             assert(allowed_to_transfer >= 1, 'Not enough allowance');
 
             // Transfer 1 STRK
-            let success = ERC20ABIDispatcher{ contract_address: self.strk_contract.read() }.transfer_from(caller, get_contract_address(), 1);
+            let success = ERC20ABIDispatcher { contract_address: self.strk_contract.read() }
+                .transfer_from(caller, get_contract_address(), 1);
             assert(success, 'Failed to transfer STRK');
 
             match bet {
@@ -212,11 +243,7 @@ pub mod MoonOrDoom {
 
             self.user_bet_in_round.entry(caller).entry(last_round_index.into()).write(bet);
 
-            self.emit(BetPlaced {
-                round_index: last_round_index,
-                user: caller,
-                bet: bet,
-            });
+            self.emit(BetPlaced { round_index: last_round_index, user: caller, bet: bet, });
         }
 
         fn get_round_info(self: @ContractState) -> (usize, RoundState, u64, u64, u128, u128) {

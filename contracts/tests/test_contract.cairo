@@ -1,6 +1,4 @@
-use snforge_std::{
-    declare, ContractClassTrait
-};
+use snforge_std::{declare, ContractClassTrait};
 use moon_or_doom::contract::IMoonOrDoomDispatcher;
 use starknet::ContractAddress;
 
@@ -54,21 +52,21 @@ mod start_round_tests {
 
         start_cheat_block_timestamp_global(100);
 
-        let expected_event = Event::RoundStarted(RoundStarted { 
-            index: 1,
-            start_price: start_price,
-            start_timestamp: 100,
-        });
+        let expected_event = Event::RoundStarted(
+            RoundStarted { index: 1, start_price: start_price, start_timestamp: 100, }
+        );
         contract.start_round(start_price);
-        spy.assert_emitted(@array![(contract.contract_address, expected_event)]); 
+        spy.assert_emitted(@array![(contract.contract_address, expected_event)]);
     }
 }
 
 mod end_round_tests {
     use super::deploy_contracts;
     use starknet::contract_address_const;
-    use snforge_std::{start_cheat_block_timestamp_global, start_mock_call, start_cheat_caller_address_global};
-    use moon_or_doom::contract::{Bet,RoundState, IMoonOrDoomDispatcherTrait};
+    use snforge_std::{
+        start_cheat_block_timestamp_global, start_mock_call, start_cheat_caller_address_global
+    };
+    use moon_or_doom::contract::{Bet, RoundState, IMoonOrDoomDispatcherTrait};
     use moon_or_doom::contract::MoonOrDoom::{RoundEnded, Event};
     use snforge_std::{spy_events, EventSpyAssertionsTrait};
 
@@ -111,7 +109,7 @@ mod end_round_tests {
 
         // Attempt to end a round without starting one first
         contract.end_round(end_price); // This should panic
-    }    
+    }
 
     #[test]
     fn end_round_should_emit_event() {
@@ -125,7 +123,11 @@ mod end_round_tests {
         start_cheat_block_timestamp_global(200);
 
         let caller = contract_address_const::<1>();
-        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(
+            strk_mock_address,
+            selector!("allowance"),
+            array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]
+        );
         start_mock_call(strk_mock_address, selector!("transfer_from"), array![true]);
         start_mock_call(strk_mock_address, selector!("transfer"), array![true]);
 
@@ -133,17 +135,19 @@ mod end_round_tests {
         start_cheat_caller_address_global(caller);
         contract.bet(Bet::MOON);
 
-        let expected_event = Event::RoundEnded(RoundEnded { 
-            index: 1,
-            start_timestamp: 100,
-            end_timestamp: 200,
-            start_price: start_price,   
-            end_price: end_price,
-            moon_bets_count: 1,
-            doom_bets_count: 0,
-        });
+        let expected_event = Event::RoundEnded(
+            RoundEnded {
+                index: 1,
+                start_timestamp: 100,
+                end_timestamp: 200,
+                start_price: start_price,
+                end_price: end_price,
+                moon_bets_count: 1,
+                doom_bets_count: 0,
+            }
+        );
         contract.end_round(end_price);
-        spy.assert_emitted(@array![(contract.contract_address, expected_event)]); 
+        spy.assert_emitted(@array![(contract.contract_address, expected_event)]);
     }
 }
 
@@ -164,7 +168,11 @@ mod bet_tests {
         // Start a round
         contract.start_round(start_price);
 
-        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(
+            strk_mock_address,
+            selector!("allowance"),
+            array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]
+        );
         start_mock_call(strk_mock_address, selector!("transfer_from"), array![true]);
 
         // Place a bet
@@ -214,7 +222,11 @@ mod bet_tests {
         // Start a round
         contract.start_round(start_price);
 
-        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(
+            strk_mock_address,
+            selector!("allowance"),
+            array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]
+        );
         start_mock_call(strk_mock_address, selector!("transfer_from"), array![true]);
 
         // Place a bet
@@ -250,7 +262,11 @@ mod bet_tests {
         // Start a round
         contract.start_round(start_price);
 
-        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(
+            strk_mock_address,
+            selector!("allowance"),
+            array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]
+        );
         start_mock_call(strk_mock_address, selector!("transfer_from"), array![false]);
 
         // Attempt to place a bet
@@ -268,20 +284,22 @@ mod bet_tests {
         // Start a round
         contract.start_round(start_price);
 
-        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(
+            strk_mock_address,
+            selector!("allowance"),
+            array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]
+        );
         start_mock_call(strk_mock_address, selector!("transfer_from"), array![true]);
 
         // Place a bet
         start_cheat_caller_address_global(caller);
         let bet = Bet::MOON;
 
-        let expected_event = Event::BetPlaced(BetPlaced { 
-            round_index: 1,
-            user: caller,
-            bet: bet,
-        });
+        let expected_event = Event::BetPlaced(
+            BetPlaced { round_index: 1, user: caller, bet: bet, }
+        );
         contract.bet(bet);
-        spy.assert_emitted(@array![(contract.contract_address, expected_event)]); 
+        spy.assert_emitted(@array![(contract.contract_address, expected_event)]);
     }
 }
 
@@ -301,7 +319,9 @@ mod get_round_info_tests {
         contract.start_round(start_price);
 
         // Get round info
-        let (round_count, state, start_timestamp, end_timestamp, round_start_price, round_end_price) =
+        let (
+            round_count, state, start_timestamp, end_timestamp, round_start_price, round_end_price
+        ) =
             contract
             .get_round_info();
 
@@ -318,9 +338,7 @@ mod get_round_info_tests {
         contract.end_round(end_price);
 
         // Get updated round info
-        let (_, state, _, end_timestamp, _, round_end_price) =
-            contract
-            .get_round_info();
+        let (_, state, _, end_timestamp, _, round_end_price) = contract.get_round_info();
 
         // Assert updated details
         assert(state == RoundState::Ended, 'Round state should be Ended');
@@ -353,7 +371,11 @@ mod get_bet_info_tests {
         // Start a round
         contract.start_round(start_price);
 
-        start_mock_call(strk_mock_address, selector!("allowance"), array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]);
+        start_mock_call(
+            strk_mock_address,
+            selector!("allowance"),
+            array![u256 { low: 0xffffffffffffffff, high: 0xffffffffffffffff }]
+        );
         start_mock_call(strk_mock_address, selector!("transfer_from"), array![true]);
 
         // Place a bet
@@ -380,7 +402,7 @@ mod get_bet_info_tests {
 
     #[test]
     #[should_panic()]
-    // TODO: Should return a specific error message   
+    // TODO: Should return a specific error message
     fn get_bet_info_when_bet_does_not_exist_should_panic() {
         let (contract, _) = deploy_contracts();
         let caller = contract_address_const::<1>();
