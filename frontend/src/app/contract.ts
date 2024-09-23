@@ -23,7 +23,7 @@ async function initializeContract() {
 
   account = new Account(provider, accountAddress as string, privateKey as string);
 
-  const contractAddress = "0x04cfe4fbea86ab273e75f6e0fdaca06de1c3a8495dd3d5a65afa4822339306ef";
+  const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
 
   const { abi: abi } = await provider.getClassAt(contractAddress);
     
