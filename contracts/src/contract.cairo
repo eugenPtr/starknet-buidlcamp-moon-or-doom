@@ -153,6 +153,17 @@ pub mod MoonOrDoom {
             let total_bets_count = moon_bets_count + doom_bets_count;
 
             if total_bets_count == 0 {
+                self.emit(
+                    RoundEnded {
+                        index: last_round_index,
+                        start_timestamp: round.start_timestamp,
+                        end_timestamp: round.end_timestamp,
+                        start_price: round.start_price,
+                        end_price: round.end_price,
+                        moon_bets_count: moon_bets_count,
+                        doom_bets_count: doom_bets_count,
+                    }
+                );
                 return;
             }
 
