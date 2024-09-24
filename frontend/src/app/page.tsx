@@ -14,7 +14,6 @@ const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string
 
 export default function Home() {
 	const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
-  const [elapsedTime, setElapsedTime] = useState(0);
 
 	const { contract } = useContract({ abi: ABI as Abi, address: CONTRACT_ADDRESS });
 	const { address: userAddress } = useAccount();
@@ -73,7 +72,7 @@ export default function Home() {
           <li>Start Price: ${roundInfo.startPrice.toFixed(2)}</li>
           <li>Current/End Price: ${roundInfo.endPrice.toFixed(2)}</li>
           <li>Status: {roundInfo.isActive ? 'Active' : 'Inactive'}</li>
-          <li>Elapsed Time: {elapsedTime} seconds</li>
+          {/* <li>Elapsed Time: {elapsedTime} seconds</li> */}
 				</ul>
 			)
 		}
@@ -136,6 +135,12 @@ export default function Home() {
             Doom
           </button>
         </div>
+
+				<div>
+					{errorSendStartRoundTx && <p>Error starting round: {errorSendStartRoundTx.message}</p>}
+					{errorSendEndRoundTx && <p>Error ending round: {errorSendEndRoundTx.message}</p>}
+					{errorPlaceBetTx && <p>Error placing bet: {errorPlaceBetTx.message}</p>}
+				</div>
 
         <div className="flex flex-col gap-4 items-center justify-center w-full max-w-md">
           <button
