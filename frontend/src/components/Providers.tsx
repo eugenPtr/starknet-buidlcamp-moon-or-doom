@@ -4,7 +4,6 @@ import { ReactNode } from "react";
 import { sepolia } from "@starknet-react/chains";
 import {
   StarknetConfig,
-  argent,
   braavos,
   useInjectedConnectors,
   jsonRpcProvider,
