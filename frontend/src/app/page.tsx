@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Bet } from './contract';
 import { RoundInfo } from './types';
 import WalletBar from '../components/WalletBar';
-import { useContract, useAccount, useReadContract, useSendTransaction } from "@starknet-react/core";
-import { type Abi, CairoCustomEnum } from "starknet";
+import { useContract, useAccount, useReadContract, useSendTransaction, useBlockNumber } from "@starknet-react/core";
+import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
+import { shortenAddress, formatAmount } from "../lib/utils";
 
 import ABI from "../abi/moon_or_doom.json";
 
@@ -77,6 +78,59 @@ export default function Home() {
 			)
 		}
 	};
+
+  // Reading Contract Events
+  type ContractEvent = {
+    from_address: string;
+    keys: string[];
+    data: string[];
+  };
+
+  const provider = useMemo(() => new RpcProvider({ nodeUrl: process.env.NEXT_PUBLIC_RPC_URL }), []);
+  const [events, setEvents] = useState<ContractEvent[]>([]);
+  const lastCheckedBlockRef = useRef(0);
+  const { data: blockNumber } = useBlockNumber({ refetchInterval: 3000 });
+
+  const checkForEvents = useCallback(async (contract: Contract, currentBlockNumber: number) => {
+    if (currentBlockNumber <= lastCheckedBlockRef.current) {
+      return; // No new blocks, skip checking for events
+    }
+    try {
+      // Fetch events only for the new blocks
+      const fromBlock = lastCheckedBlockRef.current + 1;
+      const keyFilter = [[num.toHex(hash.starknetKeccak('RoundEnded'))]];
+      console.log('event hash: ', num.toHex(hash.starknetKeccak('RoundEnded')));
+      const fetchedEvents = await provider.getEvents({
+        address: contract.address,
+        from_block: { block_number: fromBlock },
+        to_block: { block_number: currentBlockNumber },
+        // keys: keyFilter, // Only fetch RoundEnded events
+        chunk_size: 10,
+      });
+
+      if (fetchedEvents && fetchedEvents.events) {
+        setEvents(prevEvents => [...prevEvents, ...fetchedEvents.events]);
+      }
+
+      lastCheckedBlockRef.current = currentBlockNumber;
+    } catch (error) {
+      console.error('Error checking for events:', error);
+    }
+  }, [provider]);
+
+  useEffect(() => {
+    if (contract && blockNumber) {
+      checkForEvents(contract, blockNumber);
+    }
+  }, [contract, blockNumber, checkForEvents]);
+
+
+  const lastTenEvents = useMemo(() => {
+    console.log('events', events);
+    return [...events].reverse().slice(0, 10);
+  }, [events]);
+
+
 
 	const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
 
@@ -161,6 +215,31 @@ export default function Home() {
             {isEndingRound ? 'Ending Round...' : 'End Round'}
           </button>
         </div>
+        <div className="p-4 bg-white border-black border">
+            <h3 className="text-lg font-bold mb-2">
+              Contract Events ({events.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border-b border-gray-300 text-left p-2 font-semibold">Sender</th>
+                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Added</th>
+                    <th className="border-b border-gray-300 text-right p-2 font-semibold">New Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastTenEvents.map((event, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                      {/* <td className="border-b border-gray-200 p-2">{shortenAddress(event.keys[1])}</td> */}
+                      {/* <td className="border-b border-gray-200 p-2 text-right">{formatAmount(event.data[0])}</td> */}
+                      {/* <td className="border-b border-gray-200 p-2 text-right">{formatAmount(event.data[2])}</td> */}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
       </main>
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
         <a
