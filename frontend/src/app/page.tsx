@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bet } from './contract';
 import { RoundInfo } from './types';
 import WalletBar from '../components/WalletBar';
@@ -10,7 +10,7 @@ import { type Abi, CairoCustomEnum } from "starknet";
 
 import ABI from "../abi/moon_or_doom.json";
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 
 export default function Home() {
 	const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
