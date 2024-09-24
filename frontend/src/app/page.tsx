@@ -7,7 +7,7 @@ import { RoundInfo } from './types';
 import WalletBar from '../components/WalletBar';
 import { useContract, useAccount, useReadContract, useSendTransaction, useBlockNumber } from "@starknet-react/core";
 import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
-import { formatAmount, convertTimestampToDate } from "../lib/utils";
+import { formatAmount } from "../lib/utils";
 
 import ABI from "../abi/moon_or_doom.json";
 
