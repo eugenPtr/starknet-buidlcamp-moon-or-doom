@@ -7,7 +7,7 @@ import { RoundInfo } from './types';
 import WalletBar from '../components/WalletBar';
 import { useContract, useAccount, useReadContract, useSendTransaction, useBlockNumber } from "@starknet-react/core";
 import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
-import { shortenAddress, formatAmount } from "../lib/utils";
+import { formatAmount, convertTimestampToDate } from "../lib/utils";
 
 import ABI from "../abi/moon_or_doom.json";
 
@@ -99,12 +99,11 @@ export default function Home() {
       // Fetch events only for the new blocks
       const fromBlock = lastCheckedBlockRef.current + 1;
       const keyFilter = [[num.toHex(hash.starknetKeccak('RoundEnded'))]];
-      console.log('event hash: ', num.toHex(hash.starknetKeccak('RoundEnded')));
       const fetchedEvents = await provider.getEvents({
         address: contract.address,
         from_block: { block_number: fromBlock },
         to_block: { block_number: currentBlockNumber },
-        // keys: keyFilter, // Only fetch RoundEnded events
+        keys: keyFilter, // Only fetch RoundEnded events
         chunk_size: 10,
       });
 
@@ -126,7 +125,6 @@ export default function Home() {
 
 
   const lastTenEvents = useMemo(() => {
-    console.log('events', events);
     return [...events].reverse().slice(0, 10);
   }, [events]);
 
@@ -217,23 +215,31 @@ export default function Home() {
         </div>
         <div className="p-4 bg-white border-black border">
             <h3 className="text-lg font-bold mb-2">
-              Contract Events ({events.length})
+              Past Rounds ({events.length})
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="border-b border-gray-300 text-left p-2 font-semibold">Sender</th>
-                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Added</th>
-                    <th className="border-b border-gray-300 text-right p-2 font-semibold">New Balance</th>
+                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Round</th>
+                    {/* <th className="border-b border-gray-300 text-left p-2 font-semibold">Round start</th> */}
+                    {/* <th className="border-b border-gray-300 text-right p-2 font-semibold">Round end</th> */}
+                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Start price</th>
+                    <th className="border-b border-gray-300 text-right p-2 font-semibold">End price</th>
+                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Moon Bets Count</th>
+                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Doom Bets Count</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lastTenEvents.map((event, index) => (
                     <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      {/* <td className="border-b border-gray-200 p-2">{shortenAddress(event.keys[1])}</td> */}
-                      {/* <td className="border-b border-gray-200 p-2 text-right">{formatAmount(event.data[0])}</td> */}
-                      {/* <td className="border-b border-gray-200 p-2 text-right">{formatAmount(event.data[2])}</td> */}
+                      <td className="border-b border-gray-200 p-2">{Number(event.data[0])}</td>
+                      {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
+                      {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
+                      <td className="border-b border-gray-200 p-2">{formatAmount(event.data[3])}</td>
+                      <td className="border-b border-gray-200 p-2">{formatAmount(event.data[4])}</td>
+                      <td className="border-b border-gray-200 p-2">{Number(event.data[5])}</td>
+                      <td className="border-b border-gray-200 p-2">{Number(event.data[6])}</td>
                     </tr>
                   ))}
                 </tbody>

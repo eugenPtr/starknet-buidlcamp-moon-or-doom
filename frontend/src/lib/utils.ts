@@ -1,3 +1,4 @@
+import { time } from "console";
 
 // Helper function to shorten address
 export const shortenAddress = (address: string) => {
@@ -9,3 +10,10 @@ export const formatAmount = (hex: string) => {
     const decimal = parseInt(hex, 16);
     return decimal.toString();
 };
+
+// Convert timestamp to date
+export function convertTimestampToDate(timestamp: number): string {
+    console.log("timestamp:",  timestamp)
+    const date = new Date(timestamp);
+    return date.toLocaleDateString();
+  }
