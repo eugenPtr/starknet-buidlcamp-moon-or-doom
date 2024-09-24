@@ -10,13 +10,18 @@ import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "sta
 import { formatAmount } from "../lib/utils";
 
 import ABI from "../abi/moon_or_doom.json";
+import ERC20_ABI from "../abi/erc20.json";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
+const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+const BET_AMOUNT = 1;
 
 export default function Home() {
 	const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
 
 	const { contract } = useContract({ abi: ABI as Abi, address: CONTRACT_ADDRESS });
+  const { contract: strkContract } = useContract({ abi: ERC20_ABI as Abi, address: STRK_TOKEN_ADDRESS });
+
 	const { address: userAddress } = useAccount();
 	const { data: roundInfoData, error: roundInfoError } = useReadContract({abi: ABI, functionName: "get_round_info", address: CONTRACT_ADDRESS, args: []});
 
@@ -41,6 +46,13 @@ export default function Home() {
 				: undefined, 
 	});
 
+  const { send: sendApproveTx, isPending: isApprovalPending } = useSendTransaction({ 
+		calls: 
+			strkContract && userAddress 
+				? [strkContract.populate("approve", [CONTRACT_ADDRESS, BET_AMOUNT])] 
+				: undefined, 
+	});
+
   const handleStartRound = async () => {
     await sendStartRoundTx();
   };
@@ -50,8 +62,14 @@ export default function Home() {
   };
 
   const handlePlaceBet = async (isMoon: boolean) => {
-		setBet(isMoon ? Bet.MOON : Bet.DOOM);
-    await sendPlaceBetTx();
+    const allowance = await strkContract.allowance(userAddress, CONTRACT_ADDRESS);
+
+    if (allowance < BET_AMOUNT) {
+      await sendApproveTx();
+    } else {
+      setBet(isMoon ? Bet.MOON : Bet.DOOM);
+      await sendPlaceBetTx();
+    }
   };
 
 	const RoundInfo = () => {
@@ -160,7 +178,7 @@ export default function Home() {
 
           <button
             onClick={() => handlePlaceBet(true)}
-            disabled={isPlacingBet}
+            disabled={isPlacingBet || isApprovalPending}
             className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400"
           >
             <Image
@@ -170,7 +188,7 @@ export default function Home() {
               width={20}
               height={20}
             />
-            Moon
+            { isApprovalPending ? 'Approve Bet Amount' : 'Moon' }
           </button>
           <button
             onClick={() => handlePlaceBet(false)}
@@ -184,7 +202,7 @@ export default function Home() {
               width={20}
               height={20}
             />
-            Doom
+            { isApprovalPending ? 'Approve Bet Amount' : 'Doom' }
           </button>
         </div>
 
