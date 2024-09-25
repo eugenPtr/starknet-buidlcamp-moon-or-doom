@@ -7,7 +7,8 @@ import { RoundInfo } from './types';
 import WalletBar from '../components/WalletBar';
 import { useContract, useAccount, useReadContract, useSendTransaction, useBlockNumber } from "@starknet-react/core";
 import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
-import { formatAmount } from "../lib/utils";
+import { formatAmount } from "@/lib/utils";
+import { Button } from "@/components/ui";
 
 import ABI from "../abi/moon_or_doom.json";
 import ERC20_ABI from "../abi/erc20.json";
@@ -17,41 +18,41 @@ const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab0720
 const BET_AMOUNT = 1;
 
 export default function Home() {
-	const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
+  const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
 
-	const { contract } = useContract({ abi: ABI as Abi, address: CONTRACT_ADDRESS });
+  const { contract } = useContract({ abi: ABI as Abi, address: CONTRACT_ADDRESS });
   const { contract: strkContract } = useContract({ abi: ERC20_ABI as Abi, address: STRK_TOKEN_ADDRESS });
 
-	const { address: userAddress } = useAccount();
-	const { data: roundInfoData, error: roundInfoError } = useReadContract({abi: ABI, functionName: "get_round_info", address: CONTRACT_ADDRESS, args: []});
+  const { address: userAddress } = useAccount();
+  const { data: roundInfoData, error: roundInfoError } = useReadContract({ abi: ABI, functionName: "get_round_info", address: CONTRACT_ADDRESS, args: [] });
 
-	const { send: sendStartRoundTx, error: errorSendStartRoundTx, isPending: isStartingRound } = useSendTransaction({ 
-		calls: 
-			contract && userAddress 
-				? [contract.populate("start_round", [1000])] 
-				: undefined, 
-	});
+  const { send: sendStartRoundTx, error: errorSendStartRoundTx, isPending: isStartingRound } = useSendTransaction({
+    calls:
+      contract && userAddress
+        ? [contract.populate("start_round", [1000])]
+        : undefined,
+  });
 
-	const { send: sendEndRoundTx, error: errorSendEndRoundTx, isPending: isEndingRound } = useSendTransaction({ 
-		calls: 
-			contract && userAddress 
-				? [contract.populate("end_round", [5000])] 
-				: undefined, 
-	});
+  const { send: sendEndRoundTx, error: errorSendEndRoundTx, isPending: isEndingRound } = useSendTransaction({
+    calls:
+      contract && userAddress
+        ? [contract.populate("end_round", [5000])]
+        : undefined,
+  });
 
-	const { send: sendPlaceBetTx, error: errorPlaceBetTx, isPending: isPlacingBet } = useSendTransaction({ 
-		calls: 
-			contract && userAddress 
-				? [contract.populate("bet", [bet])] 
-				: undefined, 
-	});
+  const { send: sendPlaceBetTx, error: errorPlaceBetTx, isPending: isPlacingBet } = useSendTransaction({
+    calls:
+      contract && userAddress
+        ? [contract.populate("bet", [bet])]
+        : undefined,
+  });
 
-  const { send: sendApproveTx, isPending: isApprovalPending } = useSendTransaction({ 
-		calls: 
-			strkContract && userAddress 
-				? [strkContract.populate("approve", [CONTRACT_ADDRESS, BET_AMOUNT])] 
-				: undefined, 
-	});
+  const { send: sendApproveTx, isPending: isApprovalPending } = useSendTransaction({
+    calls:
+      strkContract && userAddress
+        ? [strkContract.populate("approve", [CONTRACT_ADDRESS, BET_AMOUNT])]
+        : undefined,
+  });
 
   const handleStartRound = async () => {
     await sendStartRoundTx();
@@ -72,30 +73,30 @@ export default function Home() {
     }
   };
 
-	const RoundInfo = () => {
-		if (roundInfoError) {
-			return <p>Error fetching round info: {roundInfoError.message}</p>;
-		} else if (roundInfoData) {
-			const roundInfo : RoundInfo = {
-				roundId: Number(roundInfoData[0]),
-				isActive: Boolean(roundInfoData[1].variant.Active),
-				startTimestamp: Number(roundInfoData[2]),
-				endTimestamp: Number(roundInfoData[3]),
-				startPrice: Number(roundInfoData[4]),
-				endPrice: Number(roundInfoData[5]),
-			}
+  const RoundInfo = () => {
+    if (roundInfoError) {
+      return <p>Error fetching round info: {roundInfoError.message}</p>;
+    } else if (roundInfoData) {
+      const roundInfo: RoundInfo = {
+        roundId: Number(roundInfoData[0]),
+        isActive: Boolean(roundInfoData[1].variant.Active),
+        startTimestamp: Number(roundInfoData[2]),
+        endTimestamp: Number(roundInfoData[3]),
+        startPrice: Number(roundInfoData[4]),
+        endPrice: Number(roundInfoData[5]),
+      }
 
-			return (
-				<ul>
-					<li>Round ID: {roundInfo.roundId}</li>
+      return (
+        <ul>
+          <li>Round ID: {roundInfo.roundId}</li>
           <li>Start Price: ${roundInfo.startPrice.toFixed(2)}</li>
           <li>Current/End Price: ${roundInfo.endPrice.toFixed(2)}</li>
           <li>Status: {roundInfo.isActive ? 'Active' : 'Inactive'}</li>
           {/* <li>Elapsed Time: {elapsedTime} seconds</li> */}
-				</ul>
-			)
-		}
-	};
+        </ul>
+      )
+    }
+  };
 
   // Reading Contract Events
   type ContractEvent = {
@@ -148,124 +149,121 @@ export default function Home() {
 
 
 
-	const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
+  const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
 
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <header>
-				<WalletBar />
-			</header>
-			<main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+    <div className="flex flex-col align-stretch min-h-screen font-[family-name:var(--font-geist-sans)]">
+      <header className="flex justify-between p-4 align-center">
+        <Image
+          width={200}
+          height={50}  // Adjust this value as needed
+          src="https://www.starknet.io/wp-content/themes/Starknet/assets/img/starknet-logo.svg"
+          alt="Starknet Logo"
+        />
+        <WalletBar />
+      </header>
+      <main className="max-w-6xl mx-auto p-4 grow w-full flex flex-col justify-center">
+        <div className="flex gap-6 py-6">
+          <div className="grow">Chart
+            {/* <div className="flex gap-4 items-center flex-col sm:flex-row">
+             <TokenPrice />
+           </div> */}
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <Image
-            width={200} 
-            height={50}  // Adjust this value as needed
-            src="https://www.starknet.io/wp-content/themes/Starknet/assets/img/starknet-logo.svg"
-            alt="Starknet Logo"
-          />
-        </div>
+          <div className="flex flex-col gap-4">
+            <RoundInfo />
+            <div className="flex gap-4 items-center justify-center flex-col sm:flex-row">
 
-        {/* <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <TokenPrice />
-        </div> */}
+              <Button
+                onClick={() => handlePlaceBet(true)}
+                disabled={isPlacingBet || isApprovalPending}
+              >
+                <Image
+                  className="dark:invert"
+                  src="https://www.svgrepo.com/show/489109/rocket-launch.svg"
+                  alt="Arrow Up"
+                  width={20}
+                  height={20}
+                />
+                {isApprovalPending ? 'Approve Bet Amount' : 'Moon'}
+              </Button>
+              <Button
+                onClick={() => handlePlaceBet(false)}
+                disabled={isPlacingBet}
+              >
+                <Image
+                  className="dark:invert"
+                  src="https://www.svgrepo.com/show/444703/explosion.svg"
+                  alt="Arrow Down"
+                  width={20}
+                  height={20}
+                />
+                {isApprovalPending ? 'Approve Bet Amount' : 'Doom'}
+              </Button>
+            </div>
 
-        <div className="flex flex-col gap-4 items-center">
-          <RoundInfo />
-        </div>
+            {/* <div>
+              {errorSendStartRoundTx && <p>Error starting round: {errorSendStartRoundTx.message}</p>}
+              {errorSendEndRoundTx && <p>Error ending round: {errorSendEndRoundTx.message}</p>}
+              {errorPlaceBetTx && <p>Error placing bet: {errorPlaceBetTx.message}</p>}
+            </div>
 
-        <div className="flex gap-4 items-center justify-center flex-col sm:flex-row">
+            <div className="flex flex-col gap-4 items-center justify-center w-full max-w-md">
+              <button
+                onClick={handleStartRound}
+                disabled={isStartingRound || isRoundActive}
+                className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
+              >
 
-          <button
-            onClick={() => handlePlaceBet(true)}
-            disabled={isPlacingBet || isApprovalPending}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400"
-          >
-            <Image
-              className="dark:invert"
-              src="https://www.svgrepo.com/show/489109/rocket-launch.svg"
-              alt="Arrow Up"
-              width={20}
-              height={20}
-            />
-            { isApprovalPending ? 'Approve Bet Amount' : 'Moon' }
-          </button>
-          <button
-            onClick={() => handlePlaceBet(false)}
-            disabled={isPlacingBet}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400"
-          >
-            <Image
-              className="dark:invert"
-              src="https://www.svgrepo.com/show/444703/explosion.svg"
-              alt="Arrow Down"
-              width={20}
-              height={20}
-            />
-            { isApprovalPending ? 'Approve Bet Amount' : 'Doom' }
-          </button>
-        </div>
+                {isStartingRound ? 'Starting Round...' : 'Start Round'}
+              </button>
 
-				<div>
-					{errorSendStartRoundTx && <p>Error starting round: {errorSendStartRoundTx.message}</p>}
-					{errorSendEndRoundTx && <p>Error ending round: {errorSendEndRoundTx.message}</p>}
-					{errorPlaceBetTx && <p>Error placing bet: {errorPlaceBetTx.message}</p>}
-				</div>
+              <button
+                onClick={handleEndRound}
+                disabled={isEndingRound || !isRoundActive}
+                className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-red-500 text-background gap-2 hover:bg-red-600 dark:hover:bg-red-400 text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
+              >
 
-        <div className="flex flex-col gap-4 items-center justify-center w-full max-w-md">
-          <button
-            onClick={handleStartRound}
-            disabled={isStartingRound || isRoundActive}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
-          >
-            
-            {isStartingRound ? 'Starting Round...' : 'Start Round'}
-          </button>
-
-          <button
-            onClick={handleEndRound}
-            disabled={isEndingRound || !isRoundActive}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-red-500 text-background gap-2 hover:bg-red-600 dark:hover:bg-red-400 text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
-          >
-           
-            {isEndingRound ? 'Ending Round...' : 'End Round'}
-          </button>
+                {isEndingRound ? 'Ending Round...' : 'End Round'}
+              </button>
+            </div> */}
+          </div>
         </div>
         <div className="p-4 bg-white border-black border">
-            <h3 className="text-lg font-bold mb-2">
-              Past Rounds ({events.length})
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Round</th>
-                    {/* <th className="border-b border-gray-300 text-left p-2 font-semibold">Round start</th> */}
-                    {/* <th className="border-b border-gray-300 text-right p-2 font-semibold">Round end</th> */}
-                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Start price</th>
-                    <th className="border-b border-gray-300 text-right p-2 font-semibold">End price</th>
-                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Moon Bets Count</th>
-                    <th className="border-b border-gray-300 text-right p-2 font-semibold">Doom Bets Count</th>
+          <h3 className="text-lg font-bold mb-2">
+            Past Rounds ({events.length})
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Round</th>
+                  {/* <th className="border-b border-gray-300 text-left p-2 font-semibold">Round start</th> */}
+                  {/* <th className="border-b border-gray-300 text-right p-2 font-semibold">Round end</th> */}
+                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Start price</th>
+                  <th className="border-b border-gray-300 text-right p-2 font-semibold">End price</th>
+                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Moon Bets Count</th>
+                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Doom Bets Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lastTenEvents.map((event, index) => (
+                  <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                    <td className="border-b border-gray-200 p-2">{Number(event.data[0])}</td>
+                    {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
+                    {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
+                    <td className="border-b border-gray-200 p-2">{formatAmount(event.data[3])}</td>
+                    <td className="border-b border-gray-200 p-2">{formatAmount(event.data[4])}</td>
+                    <td className="border-b border-gray-200 p-2">{Number(event.data[5])}</td>
+                    <td className="border-b border-gray-200 p-2">{Number(event.data[6])}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {lastTenEvents.map((event, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className="border-b border-gray-200 p-2">{Number(event.data[0])}</td>
-                      {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
-                      {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
-                      <td className="border-b border-gray-200 p-2">{formatAmount(event.data[3])}</td>
-                      <td className="border-b border-gray-200 p-2">{formatAmount(event.data[4])}</td>
-                      <td className="border-b border-gray-200 p-2">{Number(event.data[5])}</td>
-                      <td className="border-b border-gray-200 p-2">{Number(event.data[6])}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
+        </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center p-4">
         <a
           className="flex items-center gap-2 hover:underline hover:underline-offset-4"
           href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
