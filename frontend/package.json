@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "-": "^0.0.1",
     "@starknet-react/chains": "^3.0.0",
     "@starknet-react/core": "^3.0.0",
     "axios": "^1.7.7",
@@ -16,6 +17,7 @@
     "next": "14.2.12",
     "react": "^18",
     "react-dom": "^18",
+    "recharts": "^2.12.7",
     "starknet": "^6.12.1"
   },
   "devDependencies": {
