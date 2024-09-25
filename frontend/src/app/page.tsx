@@ -9,7 +9,7 @@ import { useContract, useAccount, useReadContract, useSendTransaction, useBlockN
 import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
 import { formatAmount } from "@/lib/utils";
 import { Button } from "@/components/ui";
-import { PriceChart } from "@/components/PriceChart";
+import { PriceChartHighCharts } from "@/components/PriceChartHighCharts";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
 import ABI from "../abi/moon_or_doom.json";
@@ -173,6 +173,28 @@ export default function Home() {
 
   const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
 
+  const [currentPrice, setCurrentPrice] = useState(2611.94)
+  const [priceChange, setPriceChange] = useState(0.75)
+
+  const [chartData, setChartData] = useState([
+    { time: Date.now() - 60000, price: 2611.19 },
+  ])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newPrice = currentPrice + (Math.random() - 0.5) * 2
+      const newPriceChange = newPrice - currentPrice
+      setCurrentPrice(newPrice)
+      setPriceChange(newPriceChange)
+      setChartData(prevData => [
+        ...prevData,
+        { time: Date.now(), price: newPrice }
+      ])
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [currentPrice])
+
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 min-h-screen font-[family-name:var(--font-geist-sans)]">
       <header className="bg-white shadow-md">
@@ -189,12 +211,10 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
-            <PriceChart
-              currentPrice={2611.94}
-              priceChange={0.75}
-              chartData={mockChartData}
-              startPrice={2611.19}
-              endPrice={2611.94}
+            <PriceChartHighCharts
+              currentPrice={currentPrice}
+              priceChange={priceChange}
+              chartData={chartData}
             />
           </div>
 
