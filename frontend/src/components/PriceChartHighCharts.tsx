@@ -9,6 +9,23 @@ interface PriceChartProps {
   chartData: { time: number; price: number }[];
 }
 
+const historicalData = [
+    { time: new Date('15:45:35'), price: 2611.19 },
+    { time: new Date('15:45:45'), price: 2611.30 },
+    { time: new Date('15:45:50'), price: 2611.40 },
+    { time: new Date('15:45:40'), price: 2611.25 },
+    { time: new Date('15:45:55'), price: 2611.50 },
+    { time: new Date('15:46:00'), price: 2611.70 },
+    { time: new Date('15:46:05'), price: 2611.85 },
+    { time: new Date('15:46:10'), price: 2611.80 },
+    { time: new Date('15:46:15'), price: 2611.75 },
+    { time: new Date('15:46:20'), price: 2611.60 },
+    { time: new Date('15:46:25'), price: 2611.70 },
+    { time: new Date('15:46:30'), price: 2611.85 },
+    { time: new Date('15:46:35'), price: 2611.90 },
+    { time: new Date('15:46:40'), price: 2611.94 },
+  ];
+
 export const PriceChartHighCharts: React.FC<PriceChartProps> = ({ currentPrice, priceChange, chartData }) => {
   const chartRef = useRef<HighchartsReact.RefObject>(null);
 
@@ -17,40 +34,52 @@ export const PriceChartHighCharts: React.FC<PriceChartProps> = ({ currentPrice, 
       type: 'line',
       animation: Highcharts.svg,
       marginRight: 10,
-      height: 400,
-      backgroundColor: 'transparent',
+      events: {
+        load: function () {
+          // Set up the updating of the chart each second
+          const series = this.series[0];
+          setInterval(function () {
+            const x = (new Date()).getTime(), // current time
+              y = Math.random() * 100 + 3000; // random price between 3000 and 3100
+            series.addPoint([x, y], true, true);
+          }, 1000);
+        }
+      }
     },
     title: {
-      text: '',
+      text: 'ETH Price Chart'
     },
     xAxis: {
       type: 'datetime',
-      tickPixelInterval: 150,
+      tickPixelInterval: 150
     },
     yAxis: {
       title: {
-        text: 'Price',
+        text: 'Price (USD)'
       },
       plotLines: [{
         value: 0,
         width: 1,
-        color: '#808080',
-      }],
+        color: '#808080'
+      }]
     },
     tooltip: {
       formatter: function () {
-        return '<b>' + Highcharts.numberFormat(this.y as number, 2) + '</b><br/>' +
-          Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x as number);
-      },
+        return '<b>' + this.series.name + '</b><br/>' +
+          Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) + '<br/>' +
+          Highcharts.numberFormat(this.y, 2);
+      }
     },
     legend: {
-      enabled: false,
+      enabled: false
+    },
+    exporting: {
+      enabled: true
     },
     series: [{
-      type: 'line',
-      name: 'Price',
-      data: chartData,
-    }] as Highcharts.SeriesOptionsType[],
+        name: 'ETH Price',
+        data: historicalData
+    }]
   };
 
   useEffect(() => {
