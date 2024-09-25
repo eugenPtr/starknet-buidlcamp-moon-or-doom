@@ -9,8 +9,8 @@ import { useContract, useAccount, useReadContract, useSendTransaction, useBlockN
 import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
 import { formatAmount } from "@/lib/utils";
 import { Button } from "@/components/ui";
-import ETHPriceChart from "@/components/ETHPriceChart";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
+import PythPriceChart from "@/components/PythPriceChart";
 
 import ABI from "../abi/moon_or_doom.json";
 import ERC20_ABI from "../abi/erc20.json";
@@ -189,7 +189,7 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
-            <ETHPriceChart />
+            <PythPriceChart />
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md">
