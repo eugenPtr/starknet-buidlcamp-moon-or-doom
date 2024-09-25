@@ -20,12 +20,26 @@ const PythPriceChart = forwardRef<HighchartsReact.RefObject, PythPriceChartProps
   const [HighchartsModule, setHighchartsModule] = useState<typeof Highcharts | null>(null);
 
   const updateChartData = useCallback(() => {
-    if (ref && 'current' in ref && ref.current && ref.current.chart) {
-      const chart = ref.current.chart;
-      if (chart.series[0]) {
-        chart.series[0].setData(priceHistory.map((d: PriceData) => [d.timestamp, d.price]), true, false, false);
-      }
-    }
+    console.log('updating chart data');
+    console.log(ref);
+
+    setChartOptions((prevOptions) => ({
+      ...prevOptions,
+      series: [
+        {
+          type: 'line',
+          name: 'STRK/USD Price',
+          data: priceHistory.map((d: PriceData) => [d.timestamp, d.price])
+        }
+      ],
+    }));
+
+    // if (ref && 'current' in ref && ref.current && ref.current.chart) {
+    //   const chart = ref.current.chart;
+    //   if (chart.series[0]) {
+    //     chart.series[0].setData(priceHistory.map((d: PriceData) => [d.timestamp, d.price]), true, false, false);
+    //   }
+    // }
   }, [priceHistory, ref]);
 
   useEffect(() => {

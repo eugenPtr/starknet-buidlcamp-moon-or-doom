@@ -94,7 +94,11 @@ export const usePythRealtime = ({
 
   const onPriceUpdate = useCallback((priceFeed: PriceFeed) => {
     const price = priceFeed.getPriceNoOlderThan(30);
+    console.log(price);
+
     if (price) {
+      setConnectionStatus('connected');
+
       const { publishTime, price: priceValue, expo } = price;
       const actualPrice = parseFloat(priceValue) * Math.pow(10, expo);
       const newPriceData: PriceData = {
@@ -104,6 +108,11 @@ export const usePythRealtime = ({
 
       setCurrentPrice(actualPrice);
       
+      setPriceHistory(prev => {
+        const newHistory = [...prev, newPriceData];
+        return newHistory.slice(-720); // Keep last hour of data
+      });
+
       if (shouldSmooth) {
         addToBuffer(newPriceData);
         if (!isSmoothing.current) {
@@ -124,10 +133,13 @@ export const usePythRealtime = ({
       connection.current.closeWebSocket();
     }
 
+    debugger;
     connection.current = new PriceServiceConnection(PYTH_ENDPOINT);
     setConnectionStatus('connecting');
+    console.log('connecting');
 
     connection.current.onWsError = (error: unknown) => { // Changed 'any' to 'unknown'
+      debugger;
       console.error('WebSocket error:', error);
       setConnectionStatus('error');
       if (retryCount.current < MAX_RETRIES) {
@@ -144,6 +156,8 @@ export const usePythRealtime = ({
     // };
 
     connection.current.subscribePriceFeedUpdates([feedId], onPriceUpdate);
+
+
   }, [feedId, onPriceUpdate]);
 
   useEffect(() => {

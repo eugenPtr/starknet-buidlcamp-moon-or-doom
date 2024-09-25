@@ -13,6 +13,7 @@ import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
 import ABI from "../abi/moon_or_doom.json";
 import ERC20_ABI from "../abi/erc20.json";
+import HighchartsReact from "highcharts-react-official";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
@@ -145,6 +146,13 @@ export default function Home() {
     if (contract && blockNumber) {
       checkForEvents(contract, blockNumber);
     }
+      
+    if (chartRef.current) {
+      // Access the chart instance via chartRef.current.chart
+      const chart = chartRef.current.chart;
+      console.log('Chart instance:', chart);
+    }
+
   }, [contract, blockNumber, checkForEvents]);
 
 
@@ -152,6 +160,8 @@ export default function Home() {
     return [...events].reverse().slice(0, 10);
   }, [events]);
 
+  const chartRef = useRef<HighchartsReact.RefObject>(null);
+  
 
 
   const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
@@ -172,7 +182,7 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
-						<PythPriceChart />
+						<PythPriceChart anyProp={1} ref={chartRef} />
             {/* <h2 className="text-xl font-semibold mb-4">Chart</h2>
             <div className="aspect-video bg-gray-200 rounded-md flex items-center justify-center">
               Chart Placeholder
