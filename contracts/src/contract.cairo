@@ -14,8 +14,8 @@ pub enum Bet {
 
 #[starknet::interface]
 pub trait IMoonOrDoom<TContractState> {
-    fn start_round(ref self: TContractState, start_price: u128);
-    fn end_round(ref self: TContractState, end_price: u128);
+    fn start_round(ref self: TContractState);
+    fn end_round(ref self: TContractState);
     fn bet(ref self: TContractState, bet: Bet);
 
     fn get_round_info(self: @TContractState) -> (usize, RoundState, u64, u64, u128, u128);
@@ -32,6 +32,8 @@ pub mod MoonOrDoom {
     };
     use super::{RoundState, Bet};
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
+    use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
+    use pragma_lib::types::{AggregationMode, DataType, PragmaPricesResponse};
 
     #[derive(Debug, Serde, Copy, Drop, starknet::Store)]
     struct Round {
@@ -49,7 +51,8 @@ pub mod MoonOrDoom {
         user_bet_in_round: Map::<ContractAddress, Map<usize, Bet>>,
         moon_bets_in_round: Map::<usize, Vec<ContractAddress>>,
         doom_bets_in_round: Map::<usize, Vec<ContractAddress>>,
-        strk_contract: ContractAddress,
+        strk_address: ContractAddress,
+        oracle_address: ContractAddress,
         // TODO: Replace this with OZ Ownable
         fee_recipient: ContractAddress,
         fee_cut: u256,
@@ -90,15 +93,16 @@ pub mod MoonOrDoom {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, strk_contract: ContractAddress) {
+    fn constructor(ref self: ContractState, strk_address: ContractAddress, oracle_address: ContractAddress) {
         self.round_count.write(0);
-        self.strk_contract.write(strk_contract);
+        self.strk_address.write(strk_address);
+        self.oracle_address.write(oracle_address);
         self.fee_cut.write(10);
     }
 
     #[abi(embed_v0)]
     impl MoonOrDoomImpl of super::IMoonOrDoom<ContractState> {
-        fn start_round(ref self: ContractState, start_price: u128) {
+        fn start_round(ref self: ContractState) {
             let last_round_index = self.round_count.read();
 
             // Check if there's an active round
@@ -111,6 +115,8 @@ pub mod MoonOrDoom {
             // Ownable This tweak helps the person who tests the dapp to start a round, bet from
             // multiple accounts and collect the fee at the end
             self.fee_recipient.write(get_caller_address());
+
+            let start_price = get_asset_price_median(self.oracle_address.read(), DataType::SpotEntry('STRK/USD'));
 
             let round = Round {
                 state: RoundState::Active,
@@ -135,11 +141,13 @@ pub mod MoonOrDoom {
                 );
         }
 
-        fn end_round(ref self: ContractState, end_price: u128) {
+        fn end_round(ref self: ContractState) {
             let last_round_index = self.round_count.read();
 
             let mut round = self.rounds.entry(last_round_index).read();
             assert(round.state == RoundState::Active, 'No active round to end');
+
+            let end_price = get_asset_price_median(self.oracle_address.read(), DataType::SpotEntry('STRK/USD'));
 
             round.state = RoundState::Ended;
             round.end_timestamp = get_block_timestamp();
@@ -168,7 +176,7 @@ pub mod MoonOrDoom {
             }
 
             let fee_amount = total_bets_count.into() * self.fee_cut.read() / 100;
-            let success = ERC20ABIDispatcher { contract_address: self.strk_contract.read() }
+            let success = ERC20ABIDispatcher { contract_address: self.strk_address.read() }
                 .transfer_from(get_contract_address(), self.fee_recipient.read(), fee_amount);
             assert(success, 'Failed to collect fee');
 
@@ -185,7 +193,7 @@ pub mod MoonOrDoom {
                                 .at(i)
                                 .read();
                             let success = ERC20ABIDispatcher {
-                                contract_address: self.strk_contract.read()
+                                contract_address: self.strk_address.read()
                             }
                                 .transfer(winner_address, reward_per_winner);
                             assert(success, 'Failed to transfer STRK');
@@ -203,7 +211,7 @@ pub mod MoonOrDoom {
                                 .at(i)
                                 .read();
                             let success = ERC20ABIDispatcher {
-                                contract_address: self.strk_contract.read()
+                                contract_address: self.strk_address.read()
                             }
                                 .transfer(winner_address, reward_per_winner);
                             assert(success, 'Failed to transfer STRK');
@@ -233,13 +241,13 @@ pub mod MoonOrDoom {
             assert(round.state == RoundState::Active, 'Round is not active');
 
             let allowed_to_transfer = ERC20ABIDispatcher {
-                contract_address: self.strk_contract.read()
+                contract_address: self.strk_address.read()
             }
                 .allowance(caller, get_contract_address());
             assert(allowed_to_transfer >= 1, 'Not enough allowance');
 
             // Transfer 1 STRK
-            let success = ERC20ABIDispatcher { contract_address: self.strk_contract.read() }
+            let success = ERC20ABIDispatcher { contract_address: self.strk_address.read() }
                 .transfer_from(caller, get_contract_address(), 1);
             assert(success, 'Failed to transfer STRK');
 
@@ -275,5 +283,11 @@ pub mod MoonOrDoom {
         fn get_bet_info(self: @ContractState, user: ContractAddress, round_index: usize) -> Bet {
             self.user_bet_in_round.entry(user).entry(round_index.into()).read()
         }
+    }
+
+    fn get_asset_price_median(oracle_address: ContractAddress, asset : DataType) -> u128  {
+        let oracle_dispatcher = IPragmaABIDispatcher{contract_address : oracle_address};
+        let output : PragmaPricesResponse= oracle_dispatcher.get_data(asset, AggregationMode::Median(()));
+        return output.price;
     }
 }
