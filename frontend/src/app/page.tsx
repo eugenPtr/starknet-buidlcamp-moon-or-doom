@@ -9,6 +9,7 @@ import { useContract, useAccount, useReadContract, useSendTransaction, useBlockN
 import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
 import { formatAmount } from "@/lib/utils";
 import { Button } from "@/components/ui";
+import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
 import ABI from "../abi/moon_or_doom.json";
 import ERC20_ABI from "../abi/erc20.json";
@@ -87,13 +88,16 @@ export default function Home() {
       }
 
       return (
-        <ul>
-          <li>Round ID: {roundInfo.roundId}</li>
-          <li>Start Price: ${roundInfo.startPrice.toFixed(2)}</li>
-          <li>Current/End Price: ${roundInfo.endPrice.toFixed(2)}</li>
-          <li>Status: {roundInfo.isActive ? 'Active' : 'Inactive'}</li>
-          {/* <li>Elapsed Time: {elapsedTime} seconds</li> */}
-        </ul>
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Round Information</h2>
+          <div className="space-y-2">
+            <p><span className="font-medium">Round ID:</span> {roundInfo.roundId}</p>
+            <p><span className="font-medium">Start Price:</span> ${roundInfo.startPrice.toFixed(2)}</p>
+            <p><span className="font-medium">Current/End Price:</span> ${roundInfo.endPrice.toFixed(2)}</p>
+            <p><span className="font-medium">Status:</span> {roundInfo.isActive ? 'Active' : 'Inactive'}</p>
+            {/* <p><span className="font-medium">Elapsed time:</span> {elapsedTime} seconds</p> */}
+          </div>
+        </div>
       )
     }
   };
@@ -152,115 +156,77 @@ export default function Home() {
   const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
 
   return (
-    <div className="flex flex-col align-stretch min-h-screen font-[family-name:var(--font-geist-sans)]">
-      <header className="flex justify-between p-4 align-center">
-        <Image
-          width={200}
-          height={50}  // Adjust this value as needed
-          src="https://www.starknet.io/wp-content/themes/Starknet/assets/img/starknet-logo.svg"
-          alt="Starknet Logo"
-        />
-        <WalletBar />
+    <div className="min-h-screen bg-gray-100 text-gray-900 min-h-screen font-[family-name:var(--font-geist-sans)]">
+      <header className="bg-white shadow-md">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <Image
+            width={200}
+            height={50}  // Adjust this value as needed
+            src="https://www.starknet.io/wp-content/themes/Starknet/assets/img/starknet-logo.svg"
+            alt="Starknet Logo"
+          />
+          <WalletBar />
+        </div>
       </header>
-      <main className="max-w-6xl mx-auto p-4 grow w-full flex flex-col justify-center">
-        <div className="flex gap-6 py-6">
-          <div className="grow">Chart
-            {/* <div className="flex gap-4 items-center flex-col sm:flex-row">
-             <TokenPrice />
-           </div> */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Chart</h2>
+            <div className="aspect-video bg-gray-200 rounded-md flex items-center justify-center">
+              Chart Placeholder
+            </div>
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="bg-white p-6 rounded-lg shadow-md">
             <RoundInfo />
-            <div className="flex gap-4 items-center justify-center flex-col sm:flex-row">
-
+            <div className="mt-6 flex space-x-4">
               <Button
+                variant="success"
                 onClick={() => handlePlaceBet(true)}
                 disabled={isPlacingBet || isApprovalPending}
               >
-                <Image
-                  className="dark:invert"
-                  src="https://www.svgrepo.com/show/489109/rocket-launch.svg"
-                  alt="Arrow Up"
-                  width={20}
-                  height={20}
-                />
-                {isApprovalPending ? 'Approve Bet Amount' : 'Moon'}
+                <ArrowUpIcon className="w-5 h-5 mr-2" />
+                Moon
               </Button>
               <Button
+                variant="danger"
                 onClick={() => handlePlaceBet(false)}
-                disabled={isPlacingBet}
+                disabled={isPlacingBet || isApprovalPending}
               >
-                <Image
-                  className="dark:invert"
-                  src="https://www.svgrepo.com/show/444703/explosion.svg"
-                  alt="Arrow Down"
-                  width={20}
-                  height={20}
-                />
-                {isApprovalPending ? 'Approve Bet Amount' : 'Doom'}
+                <ArrowDownIcon className="w-5 h-5 mr-2" />
+                Doom
               </Button>
             </div>
-
-            {/* <div>
-              {errorSendStartRoundTx && <p>Error starting round: {errorSendStartRoundTx.message}</p>}
-              {errorSendEndRoundTx && <p>Error ending round: {errorSendEndRoundTx.message}</p>}
+            <div>
               {errorPlaceBetTx && <p>Error placing bet: {errorPlaceBetTx.message}</p>}
             </div>
-
-            <div className="flex flex-col gap-4 items-center justify-center w-full max-w-md">
-              <button
-                onClick={handleStartRound}
-                disabled={isStartingRound || isRoundActive}
-                className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
-              >
-
-                {isStartingRound ? 'Starting Round...' : 'Start Round'}
-              </button>
-
-              <button
-                onClick={handleEndRound}
-                disabled={isEndingRound || !isRoundActive}
-                className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-red-500 text-background gap-2 hover:bg-red-600 dark:hover:bg-red-400 text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
-              >
-
-                {isEndingRound ? 'Ending Round...' : 'End Round'}
-              </button>
-            </div> */}
           </div>
         </div>
-        <div className="p-4 bg-white border-black border">
-          <h3 className="text-lg font-bold mb-2">
-            Past Rounds ({events.length})
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Round</th>
-                  {/* <th className="border-b border-gray-300 text-left p-2 font-semibold">Round start</th> */}
-                  {/* <th className="border-b border-gray-300 text-right p-2 font-semibold">Round end</th> */}
-                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Start price</th>
-                  <th className="border-b border-gray-300 text-right p-2 font-semibold">End price</th>
-                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Moon Bets Count</th>
-                  <th className="border-b border-gray-300 text-right p-2 font-semibold">Doom Bets Count</th>
+
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+          <h2 className="text-xl font-semibold mb-4">Past Rounds ({events.length})</h2>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left">Round</th>
+                <th className="p-2 text-left">Start price</th>
+                <th className="p-2 text-left">End price</th>
+                <th className="p-2 text-left">Moon Bets Count</th>
+                <th className="p-2 text-left">Doom Bets Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastTenEvents.map((event, index) => (
+                <tr key={index} className="border-t">
+                  <td className="p-2">{Number(event.data[0])}</td>
+                  <td className="p-2">{formatAmount(event.data[3])}</td>
+                  <td className="p-2">{formatAmount(event.data[4])}</td>
+                  <td className="p-2">{Number(event.data[5])}</td>
+                  <td className="p-2">{Number(event.data[6])}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {lastTenEvents.map((event, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                    <td className="border-b border-gray-200 p-2">{Number(event.data[0])}</td>
-                    {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
-                    {/* <td className="border-b border-gray-200 p-2">{convertTimestampToDate(Number(event.data[2]))}</td> */}
-                    <td className="border-b border-gray-200 p-2">{formatAmount(event.data[3])}</td>
-                    <td className="border-b border-gray-200 p-2">{formatAmount(event.data[4])}</td>
-                    <td className="border-b border-gray-200 p-2">{Number(event.data[5])}</td>
-                    <td className="border-b border-gray-200 p-2">{Number(event.data[6])}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </main>
       <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center p-4">
