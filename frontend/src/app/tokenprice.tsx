@@ -18,7 +18,7 @@ const TokenPrice = ({ tokenId = 'STRK', currency = 'usd' }) => {
         const contractAddresses = '0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 
         const response = await axios.get(
-          `https://pro-api.coingecko.com/api/v3/simple/token_price/starknet?contract_addresses=${contractAddresses}&vs_currencies=${currency}&x_cg_pro_api_key=CG-jQnYzT7K4oD99Zicg83VVWd5`
+          `https://pro-api.coingecko.com/api/v3/simple/token_price/starknet?contract_addresses=${contractAddresses}&vs_currencies=${currency}&x_cg_pro_api_key=CG-dYFgmxYcU7L2XbAca3KHXL4S`
         );
 
         console.log(response.data[contractAddresses][currency]);
@@ -31,13 +31,16 @@ const TokenPrice = ({ tokenId = 'STRK', currency = 'usd' }) => {
       }
     };
 
+
     fetchTokenPrice();
 
-    // Optionally, set up an interval to fetch the price regularly (e.g., every 30 seconds)
-    const interval = setInterval(fetchTokenPrice, 30000);
+    // Optionally, set up an interval to fetch the price regularly (e.g., every 10 seconds)
+    const tokenPriceInterval = setInterval(fetchTokenPrice, 10000);
 
     // Cleanup the interval on component unmount
-    return () => clearInterval(interval);
+    return () => {
+        clearInterval(tokenPriceInterval);
+    }
   }, [tokenId, currency]);
 
   if (loading) return <div>Loading...</div>;
@@ -45,9 +48,8 @@ const TokenPrice = ({ tokenId = 'STRK', currency = 'usd' }) => {
 
   return (
     <div>
-      <h3>Price of {tokenId}:</h3>
       <p>
-        {currency.toUpperCase()}: {price}
+        {price}
       </p>
     </div>
   );

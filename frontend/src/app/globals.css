@@ -29,3 +29,21 @@ body {
     text-wrap: balance;
   }
 }
+
+.img-invert {
+  -webkit-filter: invert(100%);
+  filter: invert(100%);
+}
+
+.wrapper {
+  margin: 3% 2.5%;
+}
+
+.main-zone{
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border: 2px solid #ddd;
+}
