@@ -25,7 +25,7 @@ export default function Home() {
   const { contract: strkContract } = useContract({ abi: ERC20_ABI as Abi, address: STRK_TOKEN_ADDRESS });
 
   const { address: userAddress } = useAccount();
-  const { data: roundInfoData, error: roundInfoError } = useReadContract({ abi: ABI, functionName: "get_round_info", address: CONTRACT_ADDRESS, args: [] });
+  const { data: roundInfoData, error: roundInfoError } = useReadContract({ abi: ABI as Abi, functionName: "get_round_info", address: CONTRACT_ADDRESS, args: [] });
 
   const { send: sendStartRoundTx, error: errorSendStartRoundTx, isPending: isStartingRound } = useSendTransaction({
     calls:
@@ -78,6 +78,7 @@ export default function Home() {
     if (roundInfoError) {
       return <p>Error fetching round info: {roundInfoError.message}</p>;
     } else if (roundInfoData) {
+			
       const roundInfo: RoundInfo = {
         roundId: Number(roundInfoData[0]),
         isActive: Boolean(roundInfoData[1].variant.Active),
@@ -92,8 +93,8 @@ export default function Home() {
           <h2 className="text-xl font-semibold mb-4">Round Information</h2>
           <div className="space-y-2">
             <p><span className="font-medium">Round ID:</span> {roundInfo.roundId}</p>
-            <p><span className="font-medium">Start Price:</span> ${roundInfo.startPrice.toFixed(2)}</p>
-            <p><span className="font-medium">Current/End Price:</span> ${roundInfo.endPrice.toFixed(2)}</p>
+            <p><span className="font-medium">Start Price:</span> {(Number(roundInfo.startPrice)/10**9).toFixed(2)}</p>
+            <p><span className="font-medium">Current/End Price:</span> {(Number(roundInfo.endPrice)/10**9).toFixed(2)}</p>
             <p><span className="font-medium">Status:</span> {roundInfo.isActive ? 'Active' : 'Inactive'}</p>
             {/* <p><span className="font-medium">Elapsed time:</span> {elapsedTime} seconds</p> */}
           </div>
@@ -199,6 +200,22 @@ export default function Home() {
             </div>
             <div>
               {errorPlaceBetTx && <p>Error placing bet: {errorPlaceBetTx.message}</p>}
+            </div>
+						<div className="mt-6 flex space-x-4">
+              <Button
+                onClick={handleStartRound}
+								disabled={isStartingRound || isRoundActive}
+              >
+                {isStartingRound ? 'Starting Round...' : 'Start Round'}
+              </Button>
+              <Button
+								onClick={handleEndRound}
+                disabled={isEndingRound || !isRoundActive}
+              >
+                 {isEndingRound ? 'Ending Round...' : 'End Round'}
+              </Button>
+							{errorSendStartRoundTx && <p>Error starting round: {errorSendStartRoundTx.message}</p>}
+							{errorSendEndRoundTx && <p>Error ending round: {errorSendEndRoundTx.message}</p>}
             </div>
           </div>
         </div>

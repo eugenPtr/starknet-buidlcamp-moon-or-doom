@@ -39,24 +39,14 @@
 			{
 				"type": "function",
 				"name": "start_round",
-				"inputs": [
-					{
-						"name": "start_price",
-						"type": "core::integer::u128"
-					}
-				],
+				"inputs": [],
 				"outputs": [],
 				"state_mutability": "external"
 			},
 			{
 				"type": "function",
 				"name": "end_round",
-				"inputs": [
-					{
-						"name": "end_price",
-						"type": "core::integer::u128"
-					}
-				],
+				"inputs": [],
 				"outputs": [],
 				"state_mutability": "external"
 			},
@@ -110,7 +100,11 @@
 		"name": "constructor",
 		"inputs": [
 			{
-				"name": "strk_contract",
+				"name": "strk_address",
+				"type": "core::starknet::contract_address::ContractAddress"
+			},
+			{
+				"name": "oracle_address",
 				"type": "core::starknet::contract_address::ContractAddress"
 			}
 		]
