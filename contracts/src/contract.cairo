@@ -8,6 +8,8 @@ pub enum RoundState {
 
 #[derive(Debug, Drop, Copy, Serde, PartialEq, starknet::Store)]
 pub enum Bet {
+    #[default]
+    None,
     MOON,
     DOOM,
 }
@@ -17,6 +19,9 @@ pub trait IMoonOrDoom<TContractState> {
     fn start_round(ref self: TContractState);
     fn end_round(ref self: TContractState);
     fn bet(ref self: TContractState, bet: Bet);
+    fn set_fee_percentage(ref self: TContractState, fee_percentage: u256);
+    fn set_round_duration_seconds(ref self: TContractState, round_duration_seconds: u64);
+    fn set_betting_duration_seconds(ref self: TContractState, betting_duration_seconds: u64);
 
     fn get_round_info(self: @TContractState) -> (usize, RoundState, u64, u64, u128, u128);
     fn get_bet_info(self: @TContractState, user: ContractAddress, round_index: usize) -> Bet;
@@ -32,8 +37,16 @@ pub mod MoonOrDoom {
     };
     use super::{RoundState, Bet};
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
+    use openzeppelin::access::ownable::OwnableComponent;
     use pragma_lib::abi::{IPragmaABIDispatcher, IPragmaABIDispatcherTrait};
-    use pragma_lib::types::{AggregationMode, DataType, PragmaPricesResponse};
+    use pragma_lib::types::{AggregationMode, DataType, Checkpoint};
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+
+    // Ownable Mixin
+    #[abi(embed_v0)]
+    impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
+    impl InternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     #[derive(Debug, Serde, Copy, Drop, starknet::Store)]
     struct Round {
@@ -53,9 +66,12 @@ pub mod MoonOrDoom {
         doom_bets_in_round: Map::<usize, Vec<ContractAddress>>,
         strk_address: ContractAddress,
         oracle_address: ContractAddress,
-        // TODO: Replace this with OZ Ownable
-        fee_recipient: ContractAddress,
-        fee_cut: u256,
+        fee_percentage: u256,
+        round_duration_seconds: u64,
+        betting_duration_seconds: u64,
+
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
     }
 
     #[event]
@@ -64,6 +80,8 @@ pub mod MoonOrDoom {
         RoundStarted: RoundStarted,
         RoundEnded: RoundEnded,
         BetPlaced: BetPlaced,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event
     }
 
     #[derive(Drop, starknet::Event)]
@@ -97,7 +115,12 @@ pub mod MoonOrDoom {
         self.round_count.write(0);
         self.strk_address.write(strk_address);
         self.oracle_address.write(oracle_address);
-        self.fee_cut.write(10);
+        self.fee_percentage.write(10);
+        self.round_duration_seconds.write(60);
+        self.betting_duration_seconds.write(60);
+
+        // Set the initial owner of the contract
+        self.ownable.initializer(get_caller_address());
     }
 
     #[abi(embed_v0)]
@@ -111,17 +134,14 @@ pub mod MoonOrDoom {
                 assert(current_round.state == RoundState::Ended, 'Round is already active');
             }
 
-            // TODO: Remove this. Just for testing. To be replace with assert_only_owner from OZ
-            // Ownable This tweak helps the person who tests the dapp to start a round, bet from
-            // multiple accounts and collect the fee at the end
-            self.fee_recipient.write(get_caller_address());
+            let time_now = get_block_timestamp();
 
-            let start_price = get_asset_price_median(self.oracle_address.read(), DataType::SpotEntry('STRK/USD'));
+            let start_price = get_asset_price_median(self.oracle_address.read(), DataType::SpotEntry('STRK/USD'), time_now);
 
             let round = Round {
                 state: RoundState::Active,
-                start_timestamp: get_block_timestamp(),
-                end_timestamp: 0,
+                start_timestamp: time_now,
+                end_timestamp: time_now + self.round_duration_seconds.read(),
                 start_price: start_price,
                 end_price: 0,
             };
@@ -147,10 +167,9 @@ pub mod MoonOrDoom {
             let mut round = self.rounds.entry(last_round_index).read();
             assert(round.state == RoundState::Active, 'No active round to end');
 
-            let end_price = get_asset_price_median(self.oracle_address.read(), DataType::SpotEntry('STRK/USD'));
+            let end_price = get_asset_price_median(self.oracle_address.read(), DataType::SpotEntry('STRK/USD'), round.end_timestamp);
 
             round.state = RoundState::Ended;
-            round.end_timestamp = get_block_timestamp();
             round.end_price = end_price;
             self.rounds.entry(last_round_index).write(round);
 
@@ -175,9 +194,9 @@ pub mod MoonOrDoom {
                 return;
             }
 
-            let fee_amount = total_bets_count.into() * self.fee_cut.read() / 100;
+            let fee_amount = total_bets_count.into() * self.fee_percentage.read() / 100;
             let success = ERC20ABIDispatcher { contract_address: self.strk_address.read() }
-                .transfer_from(get_contract_address(), self.fee_recipient.read(), fee_amount);
+                .transfer_from(get_contract_address(), self.ownable.owner(), fee_amount);
             assert(success, 'Failed to collect fee');
 
             match round.end_price >= round.start_price {
@@ -237,8 +256,11 @@ pub mod MoonOrDoom {
             let last_round_index = self.round_count.read();
             let round = self.rounds.entry(last_round_index).read();
             let caller = get_caller_address();
+            let existing_bet = self.user_bet_in_round.entry(caller).entry(last_round_index.into()).read();
 
             assert(round.state == RoundState::Active, 'Round is not active');
+            assert(existing_bet == Bet::None, 'User already bet in this round');
+            assert(get_block_timestamp() < round.start_timestamp + self.betting_duration_seconds.read(), 'Betting period is over');
 
             let allowed_to_transfer = ERC20ABIDispatcher {
                 contract_address: self.strk_address.read()
@@ -257,12 +279,30 @@ pub mod MoonOrDoom {
                 },
                 Bet::DOOM => {
                     self.doom_bets_in_round.entry(last_round_index).append().write(caller);
+                },
+                _ => {
+                    assert(false, 'Invalid bet');
                 }
             }
 
             self.user_bet_in_round.entry(caller).entry(last_round_index.into()).write(bet);
 
             self.emit(BetPlaced { round_index: last_round_index, user: caller, bet: bet, });
+        }
+
+        fn set_fee_percentage(ref self: ContractState, fee_percentage: u256) {
+            self.ownable.assert_only_owner();
+            self.fee_percentage.write(fee_percentage);
+        }
+
+        fn set_round_duration_seconds(ref self: ContractState, round_duration_seconds: u64) {
+            self.ownable.assert_only_owner();
+            self.round_duration_seconds.write(round_duration_seconds);
+        }
+
+        fn set_betting_duration_seconds(ref self: ContractState, betting_duration_seconds: u64) {
+            self.ownable.assert_only_owner();
+            self.betting_duration_seconds.write(betting_duration_seconds);
         }
 
         fn get_round_info(self: @ContractState) -> (usize, RoundState, u64, u64, u128, u128) {
@@ -285,9 +325,9 @@ pub mod MoonOrDoom {
         }
     }
 
-    fn get_asset_price_median(oracle_address: ContractAddress, asset : DataType) -> u128  {
+    fn get_asset_price_median(oracle_address: ContractAddress, asset : DataType, timestamp: u64) -> u128  {
         let oracle_dispatcher = IPragmaABIDispatcher{contract_address : oracle_address};
-        let output : PragmaPricesResponse= oracle_dispatcher.get_data(asset, AggregationMode::Median(()));
-        return output.price;
+        let (checkpoint, _index) : (Checkpoint, u64)= oracle_dispatcher.get_last_checkpoint_before(asset, timestamp, AggregationMode::Median(()));
+        return checkpoint.value;
     }
 }
