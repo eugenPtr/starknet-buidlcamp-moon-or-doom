@@ -7,7 +7,7 @@ import { RoundInfo } from './types';
 import WalletBar from '../components/WalletBar';
 import { useContract, useAccount, useReadContract, useSendTransaction, useBlockNumber } from "@starknet-react/core";
 import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
-import { formatAmount } from "@/lib/utils";
+import PythPriceChart from "@/components/PythPriceChart";
 import { Button } from "@/components/ui";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
@@ -93,8 +93,8 @@ export default function Home() {
           <h2 className="text-xl font-semibold mb-4">Round Information</h2>
           <div className="space-y-2">
             <p><span className="font-medium">Round ID:</span> {roundInfo.roundId}</p>
-            <p><span className="font-medium">Start Price:</span> {(Number(roundInfo.startPrice)/10**9).toFixed(2)}</p>
-            <p><span className="font-medium">Current/End Price:</span> {(Number(roundInfo.endPrice)/10**9).toFixed(2)}</p>
+            <p><span className="font-medium">Start Price:</span> {(Number(roundInfo.startPrice)/10**9)}</p>
+            <p><span className="font-medium">Current/End Price:</span> {(Number(roundInfo.endPrice)/10**9)}</p>
             <p><span className="font-medium">Status:</span> {roundInfo.isActive ? 'Active' : 'Inactive'}</p>
             {/* <p><span className="font-medium">Elapsed time:</span> {elapsedTime} seconds</p> */}
           </div>
@@ -172,10 +172,11 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Chart</h2>
+						<PythPriceChart />
+            {/* <h2 className="text-xl font-semibold mb-4">Chart</h2>
             <div className="aspect-video bg-gray-200 rounded-md flex items-center justify-center">
               Chart Placeholder
-            </div>
+            </div> */}
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md">
@@ -236,8 +237,8 @@ export default function Home() {
               {lastTenEvents.map((event, index) => (
                 <tr key={index} className="border-t">
                   <td className="p-2">{Number(event.data[0])}</td>
-                  <td className="p-2">{formatAmount(event.data[3])}</td>
-                  <td className="p-2">{formatAmount(event.data[4])}</td>
+                  <td className="p-2">{Number(event.data[3])/10**9}</td>
+                  <td className="p-2">{Number(event.data[4])/10**9}</td>
                   <td className="p-2">{Number(event.data[5])}</td>
                   <td className="p-2">{Number(event.data[6])}</td>
                 </tr>
