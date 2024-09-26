@@ -19,23 +19,6 @@ const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string
 const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 const BET_AMOUNT = 1;
 
-const mockChartData = [
-  { time: '15:45:35', price: 2611.19 },
-  { time: '15:45:40', price: 2611.25 },
-  { time: '15:45:45', price: 2611.30 },
-  { time: '15:45:50', price: 2611.40 },
-  { time: '15:45:55', price: 2611.50 },
-  { time: '15:46:00', price: 2611.70 },
-  { time: '15:46:05', price: 2611.85 },
-  { time: '15:46:10', price: 2611.80 },
-  { time: '15:46:15', price: 2611.75 },
-  { time: '15:46:20', price: 2611.60 },
-  { time: '15:46:25', price: 2611.70 },
-  { time: '15:46:30', price: 2611.85 },
-  { time: '15:46:35', price: 2611.90 },
-  { time: '15:46:40', price: 2611.94 },
-];
-
 export default function Home() {
   const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
 

@@ -24,7 +24,7 @@ export const usePythPriceFeed = (): PriceData | null => {
             if (price) {
               setPriceData({
                 timestamp: price.publishTime,
-                price: Number(price.price)
+                price: price.price ? Number(price.price.slice(4))/10**4 : 0
               });
             }
           }
@@ -41,7 +41,7 @@ export const usePythPriceFeed = (): PriceData | null => {
             if (price) {
               setPriceData({
                 timestamp: price.publishTime,
-                price: Number(price.price)
+                price: price.price ? Number(price.price.slice(4))/10**4 : 0
               });
             }
           }

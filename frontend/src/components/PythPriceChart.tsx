@@ -1,11 +1,10 @@
-"use client";  // This tells Next.js this component is a Client Component
+"use client";  
 
 import React, { useEffect, useRef, useState } from 'react';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import { usePythPriceFeed, PriceData } from '../lib/pyth';
 
-// Ensure we have the modules for real-time updates and animations
 import HC_more from 'highcharts/highcharts-more';
 import HC_exporting from 'highcharts/modules/exporting';
 
@@ -37,11 +36,11 @@ const STRKPriceChart: React.FC = () => {
   const options: Highcharts.Options = {
     chart: {
       type: 'line',
-      animation: Highcharts.svg,
+      // animation: Highcharts.svg,
       height: '400px'
     },
     title: {
-      text: 'STRK/USD Price Chart (Pyth)'
+      text: 'STRK/USD'
     },
     xAxis: {
       type: 'datetime',
