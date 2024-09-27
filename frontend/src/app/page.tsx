@@ -1,173 +1,263 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState, useEffect } from 'react';
-import { startRound, placeBet, getRoundInfo, endRound, Bet } from './contract';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { Bet } from './contract';
 import { RoundInfo } from './types';
+import WalletBar from '../components/WalletBar';
+import { useContract, useAccount, useReadContract, useSendTransaction, useBlockNumber } from "@starknet-react/core";
+import { type Abi, CairoCustomEnum, RpcProvider, Contract, hash, num } from "starknet";
+import PythPriceChart from "@/components/PythPriceChart";
+import { Button } from "@/components/ui";
+import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
+
+import ABI from "../abi/moon_or_doom.json";
+import ERC20_ABI from "../abi/erc20.json";
+import HighchartsReact from "highcharts-react-official";
+
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
+const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+const BET_AMOUNT = 1;
 
 export default function Home() {
-  const [isStartingRound, setIsStartingRound] = useState(false);
-  const [isEndingRound, setIsEndingRound] = useState(false);
-  const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [roundInfo, setRoundInfo] = useState<RoundInfo>({ 
-    roundId: 0, 
-    startPrice: 0, 
-    endPrice: 0, 
-    isActive: false, 
-    startTimestamp: 0,
-    endTimestamp: 0
+  const [bet, setBet] = useState<CairoCustomEnum>(Bet.MOON);
+
+  const { contract } = useContract({ abi: ABI as Abi, address: CONTRACT_ADDRESS });
+  const { contract: strkContract } = useContract({ abi: ERC20_ABI as Abi, address: STRK_TOKEN_ADDRESS });
+
+  const { address: userAddress } = useAccount();
+  const { data: roundInfoData, error: roundInfoError } = useReadContract({ abi: ABI as Abi, functionName: "get_round_info", address: CONTRACT_ADDRESS, args: [] });
+
+  const { send: sendStartRoundTx, error: errorSendStartRoundTx, isPending: isStartingRound } = useSendTransaction({
+    calls:
+      contract && userAddress
+        ? [contract.populate("start_round", [1000])]
+        : undefined,
   });
-  const [elapsedTime, setElapsedTime] = useState(0);
 
-  useEffect(() => {
-    const fetchRoundInfo = async () => {
-      try {
-        const info = await getRoundInfo();
-        setRoundInfo(info);
-      } catch (error) {
-        console.error('Failed to fetch round info:', error);
-      }
-    };
+  const { send: sendEndRoundTx, error: errorSendEndRoundTx, isPending: isEndingRound } = useSendTransaction({
+    calls:
+      contract && userAddress
+        ? [contract.populate("end_round", [5000])]
+        : undefined,
+  });
 
-    fetchRoundInfo(); // Fetch immediately on component mount
+  const { send: sendPlaceBetTx, error: errorPlaceBetTx, isPending: isPlacingBet } = useSendTransaction({
+    calls:
+      contract && userAddress
+        ? [contract.populate("bet", [bet])]
+        : undefined,
+  });
 
-    const intervalId = setInterval(fetchRoundInfo, 10000); // Update every 10 seconds
-
-    return () => clearInterval(intervalId); // Clean up on component unmount
-  }, []);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (roundInfo.isActive && roundInfo.startTimestamp > 0) {
-      timer = setInterval(() => {
-        const now = Math.floor(Date.now() / 1000);
-        setElapsedTime(now - roundInfo.startTimestamp);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [roundInfo.isActive, roundInfo.startTimestamp]);
+  const { send: sendApproveTx, isPending: isApprovalPending } = useSendTransaction({
+    calls:
+      strkContract && userAddress
+        ? [strkContract.populate("approve", [CONTRACT_ADDRESS, BET_AMOUNT])]
+        : undefined,
+  });
 
   const handleStartRound = async () => {
-    setIsStartingRound(true);
-    try {
-      const result = await startRound();
-      console.log('Round started successfully:', result);
-      // You might want to add some success feedback here
-    } catch (error) {
-      console.error('Failed to start round:', error);
-      // You might want to add some error feedback here
-    } finally {
-      setIsStartingRound(false);
-    }
+    await sendStartRoundTx();
   };
 
   const handleEndRound = async () => {
-    setIsEndingRound(true);
-    try {
-      const result = await endRound();
-      console.log('Round ended successfully:', result);
-      // You might want to add some success feedback here
-    } catch (error) {
-      console.error('Failed to end round:', error);
-      // You might want to add some error feedback here
-    } finally {
-      setIsEndingRound(false);
-    }
+    await sendEndRoundTx();
   };
 
   const handlePlaceBet = async (isMoon: boolean) => {
-    setIsPlacingBet(true);
-    try {
-      const result = await placeBet(isMoon ? Bet.MOON : Bet.DOOM);
-      console.log(`Bet placed successfully (${isMoon ? 'Moon' : 'Doom'}):`, result);
-      // You might want to add some success feedback here
-    } catch (error) {
-      console.error('Failed to place bet:', error);
-      // You might want to add some error feedback here
-    } finally {
-      setIsPlacingBet(false);
+    const allowance = await strkContract.allowance(userAddress, CONTRACT_ADDRESS);
+
+    if (allowance < BET_AMOUNT) {
+      await sendApproveTx();
+    } else {
+      setBet(isMoon ? Bet.MOON : Bet.DOOM);
+      await sendPlaceBetTx();
     }
   };
 
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+  const RoundInfo = () => {
+    if (roundInfoError) {
+      return <p>Error fetching round info: {roundInfoError.message}</p>;
+    } else if (roundInfoData) {
+			
+      const roundInfo: RoundInfo = {
+        roundId: Number(roundInfoData[0]),
+        isActive: Boolean(roundInfoData[1].variant.Active),
+        startTimestamp: Number(roundInfoData[2]),
+        endTimestamp: Number(roundInfoData[3]),
+        startPrice: Number(roundInfoData[4]),
+        endPrice: Number(roundInfoData[5]),
+      }
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
+      return (
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Round Information</h2>
+          <div className="space-y-2">
+            <p><span className="font-medium">Round ID:</span> {roundInfo.roundId}</p>
+            <p><span className="font-medium">Start Price:</span> {(Number(roundInfo.startPrice)/10**9)}</p>
+            <p><span className="font-medium">Current/End Price:</span> {(Number(roundInfo.endPrice)/10**9)}</p>
+            <p><span className="font-medium">Status:</span> {roundInfo.isActive ? 'Active' : 'Inactive'}</p>
+            {/* <p><span className="font-medium">Elapsed time:</span> {elapsedTime} seconds</p> */}
+          </div>
+        </div>
+      )
+    }
+  };
+
+  // Reading Contract Events
+  type ContractEvent = {
+    from_address: string;
+    keys: string[];
+    data: string[];
+  };
+
+  const provider = useMemo(() => new RpcProvider({ nodeUrl: process.env.NEXT_PUBLIC_RPC_URL }), []);
+  const [events, setEvents] = useState<ContractEvent[]>([]);
+  const lastCheckedBlockRef = useRef(0);
+  const { data: blockNumber } = useBlockNumber({ refetchInterval: 3000 });
+
+  const checkForEvents = useCallback(async (contract: Contract, currentBlockNumber: number) => {
+    if (currentBlockNumber <= lastCheckedBlockRef.current) {
+      return; // No new blocks, skip checking for events
+    }
+    try {
+      // Fetch events only for the new blocks
+      const fromBlock = lastCheckedBlockRef.current + 1;
+      const keyFilter = [[num.toHex(hash.starknetKeccak('RoundEnded'))]];
+      const fetchedEvents = await provider.getEvents({
+        address: contract.address,
+        from_block: { block_number: fromBlock },
+        to_block: { block_number: currentBlockNumber },
+        keys: keyFilter, // Only fetch RoundEnded events
+        chunk_size: 10,
+      });
+
+      if (fetchedEvents && fetchedEvents.events) {
+        setEvents(prevEvents => [...prevEvents, ...fetchedEvents.events]);
+      }
+
+      lastCheckedBlockRef.current = currentBlockNumber;
+    } catch (error) {
+      console.error('Error checking for events:', error);
+    }
+  }, [provider]);
+
+  useEffect(() => {
+    if (contract && blockNumber) {
+      checkForEvents(contract, blockNumber);
+    }
+      
+    if (chartRef.current) {
+      // Access the chart instance via chartRef.current.chart
+      const chart = chartRef.current.chart;
+      console.log('Chart instance:', chart);
+    }
+
+  }, [contract, blockNumber, checkForEvents]);
+
+
+  const lastTenEvents = useMemo(() => {
+    return [...events].reverse().slice(0, 10);
+  }, [events]);
+
+  const chartRef = useRef<HighchartsReact.RefObject>(null);
+  
+
+
+  const isRoundActive = roundInfoData && Boolean(roundInfoData[1].variant.Active);
+
+  return (
+    <div className="min-h-screen bg-gray-100 text-gray-900 min-h-screen font-[family-name:var(--font-geist-sans)]">
+      <header className="bg-white shadow-md">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Image
-            width={200} 
+            width={200}
             height={50}  // Adjust this value as needed
             src="https://www.starknet.io/wp-content/themes/Starknet/assets/img/starknet-logo.svg"
             alt="Starknet Logo"
           />
+          <WalletBar />
+        </div>
+      </header>
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
+						<PythPriceChart anyProp={1} ref={chartRef} />
+            {/* <h2 className="text-xl font-semibold mb-4">Chart</h2>
+            <div className="aspect-video bg-gray-200 rounded-md flex items-center justify-center">
+              Chart Placeholder
+            </div> */}
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <RoundInfo />
+            <div className="mt-6 flex space-x-4">
+              <Button
+                variant="success"
+                onClick={() => handlePlaceBet(true)}
+                disabled={isPlacingBet || isApprovalPending}
+              >
+                <ArrowUpIcon className="w-5 h-5 mr-2" />
+                Moon
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handlePlaceBet(false)}
+                disabled={isPlacingBet || isApprovalPending}
+              >
+                <ArrowDownIcon className="w-5 h-5 mr-2" />
+                Doom
+              </Button>
+            </div>
+            <div>
+              {errorPlaceBetTx && <p>Error placing bet: {errorPlaceBetTx.message}</p>}
+            </div>
+						<div className="mt-6 flex space-x-4">
+              <Button
+                onClick={handleStartRound}
+								disabled={isStartingRound || isRoundActive}
+              >
+                {isStartingRound ? 'Starting Round...' : 'Start Round'}
+              </Button>
+              <Button
+								onClick={handleEndRound}
+                disabled={isEndingRound || !isRoundActive}
+              >
+                 {isEndingRound ? 'Ending Round...' : 'End Round'}
+              </Button>
+							{errorSendStartRoundTx && <p>Error starting round: {errorSendStartRoundTx.message}</p>}
+							{errorSendEndRoundTx && <p>Error ending round: {errorSendEndRoundTx.message}</p>}
+            </div>
+          </div>
         </div>
 
-        {/* <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <TokenPrice />
-        </div> */}
-
-        <div className="flex flex-col gap-4 items-center">
-          <h2 className="text-xl font-bold">Round Information</h2>
-          <p>Round ID: {roundInfo.roundId}</p>
-          <p>Start Price: ${roundInfo.startPrice.toFixed(2)}</p>
-          <p>Current/End Price: ${roundInfo.endPrice.toFixed(2)}</p>
-          <p>Status: {roundInfo.isActive ? 'Active' : 'Inactive'}</p>
-          <p>Elapsed Time: {elapsedTime} seconds</p>
-        </div>
-
-        <div className="flex gap-4 items-center justify-center flex-col sm:flex-row">
-
-          <button
-            onClick={() => handlePlaceBet(true)}
-            disabled={isPlacingBet}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400"
-          >
-            <Image
-              className="dark:invert"
-              src="https://www.svgrepo.com/show/489109/rocket-launch.svg"
-              alt="Arrow Up"
-              width={20}
-              height={20}
-            />
-            Moon
-          </button>
-          <button
-            onClick={() => handlePlaceBet(false)}
-            disabled={isPlacingBet}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400"
-          >
-            <Image
-              className="dark:invert"
-              src="https://www.svgrepo.com/show/444703/explosion.svg"
-              alt="Arrow Down"
-              width={20}
-              height={20}
-            />
-            Doom
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-4 items-center justify-center w-full max-w-md">
-          <button
-            onClick={handleStartRound}
-            disabled={isStartingRound || roundInfo.isActive}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-blue text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
-          >
-            
-            {isStartingRound ? 'Starting Round...' : 'Start Round'}
-          </button>
-
-          <button
-            onClick={handleEndRound}
-            disabled={isEndingRound || !roundInfo.isActive}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-red-500 text-background gap-2 hover:bg-red-600 dark:hover:bg-red-400 text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 disabled:bg-gray-400 w-full"
-          >
-           
-            {isEndingRound ? 'Ending Round...' : 'End Round'}
-          </button>
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+          <h2 className="text-xl font-semibold mb-4">Past Rounds ({events.length})</h2>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left">Round</th>
+                <th className="p-2 text-left">Start price</th>
+                <th className="p-2 text-left">End price</th>
+                <th className="p-2 text-left">Moon Bets Count</th>
+                <th className="p-2 text-left">Doom Bets Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastTenEvents.map((event, index) => (
+                <tr key={index} className="border-t">
+                  <td className="p-2">{Number(event.data[0])}</td>
+                  <td className="p-2">{Number(event.data[3])/10**9}</td>
+                  <td className="p-2">{Number(event.data[4])/10**9}</td>
+                  <td className="p-2">{Number(event.data[5])}</td>
+                  <td className="p-2">{Number(event.data[6])}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center p-4">
         <a
           className="flex items-center gap-2 hover:underline hover:underline-offset-4"
           href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"

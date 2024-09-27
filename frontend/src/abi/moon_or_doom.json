@@ -1,0 +1,220 @@
+[
+	{
+		"type": "impl",
+		"name": "MoonOrDoomImpl",
+		"interface_name": "moon_or_doom::contract::IMoonOrDoom"
+	},
+	{
+		"type": "enum",
+		"name": "moon_or_doom::contract::Bet",
+		"variants": [
+			{
+				"name": "MOON",
+				"type": "()"
+			},
+			{
+				"name": "DOOM",
+				"type": "()"
+			}
+		]
+	},
+	{
+		"type": "enum",
+		"name": "moon_or_doom::contract::RoundState",
+		"variants": [
+			{
+				"name": "Active",
+				"type": "()"
+			},
+			{
+				"name": "Ended",
+				"type": "()"
+			}
+		]
+	},
+	{
+		"type": "interface",
+		"name": "moon_or_doom::contract::IMoonOrDoom",
+		"items": [
+			{
+				"type": "function",
+				"name": "start_round",
+				"inputs": [],
+				"outputs": [],
+				"state_mutability": "external"
+			},
+			{
+				"type": "function",
+				"name": "end_round",
+				"inputs": [],
+				"outputs": [],
+				"state_mutability": "external"
+			},
+			{
+				"type": "function",
+				"name": "bet",
+				"inputs": [
+					{
+						"name": "bet",
+						"type": "moon_or_doom::contract::Bet"
+					}
+				],
+				"outputs": [],
+				"state_mutability": "external"
+			},
+			{
+				"type": "function",
+				"name": "get_round_info",
+				"inputs": [],
+				"outputs": [
+					{
+						"type": "(core::integer::u32, moon_or_doom::contract::RoundState, core::integer::u64, core::integer::u64, core::integer::u128, core::integer::u128)"
+					}
+				],
+				"state_mutability": "view"
+			},
+			{
+				"type": "function",
+				"name": "get_bet_info",
+				"inputs": [
+					{
+						"name": "user",
+						"type": "core::starknet::contract_address::ContractAddress"
+					},
+					{
+						"name": "round_index",
+						"type": "core::integer::u32"
+					}
+				],
+				"outputs": [
+					{
+						"type": "moon_or_doom::contract::Bet"
+					}
+				],
+				"state_mutability": "view"
+			}
+		]
+	},
+	{
+		"type": "constructor",
+		"name": "constructor",
+		"inputs": [
+			{
+				"name": "strk_address",
+				"type": "core::starknet::contract_address::ContractAddress"
+			},
+			{
+				"name": "oracle_address",
+				"type": "core::starknet::contract_address::ContractAddress"
+			}
+		]
+	},
+	{
+		"type": "event",
+		"name": "moon_or_doom::contract::MoonOrDoom::RoundStarted",
+		"kind": "struct",
+		"members": [
+			{
+				"name": "index",
+				"type": "core::integer::u32",
+				"kind": "data"
+			},
+			{
+				"name": "start_timestamp",
+				"type": "core::integer::u64",
+				"kind": "data"
+			},
+			{
+				"name": "start_price",
+				"type": "core::integer::u128",
+				"kind": "data"
+			}
+		]
+	},
+	{
+		"type": "event",
+		"name": "moon_or_doom::contract::MoonOrDoom::RoundEnded",
+		"kind": "struct",
+		"members": [
+			{
+				"name": "index",
+				"type": "core::integer::u32",
+				"kind": "data"
+			},
+			{
+				"name": "start_timestamp",
+				"type": "core::integer::u64",
+				"kind": "data"
+			},
+			{
+				"name": "end_timestamp",
+				"type": "core::integer::u64",
+				"kind": "data"
+			},
+			{
+				"name": "start_price",
+				"type": "core::integer::u128",
+				"kind": "data"
+			},
+			{
+				"name": "end_price",
+				"type": "core::integer::u128",
+				"kind": "data"
+			},
+			{
+				"name": "moon_bets_count",
+				"type": "core::integer::u64",
+				"kind": "data"
+			},
+			{
+				"name": "doom_bets_count",
+				"type": "core::integer::u64",
+				"kind": "data"
+			}
+		]
+	},
+	{
+		"type": "event",
+		"name": "moon_or_doom::contract::MoonOrDoom::BetPlaced",
+		"kind": "struct",
+		"members": [
+			{
+				"name": "round_index",
+				"type": "core::integer::u32",
+				"kind": "data"
+			},
+			{
+				"name": "user",
+				"type": "core::starknet::contract_address::ContractAddress",
+				"kind": "data"
+			},
+			{
+				"name": "bet",
+				"type": "moon_or_doom::contract::Bet",
+				"kind": "data"
+			}
+		]
+	},
+	{
+		"type": "event",
+		"name": "moon_or_doom::contract::MoonOrDoom::Event",
+		"kind": "enum",
+		"variants": [
+			{
+				"name": "RoundStarted",
+				"type": "moon_or_doom::contract::MoonOrDoom::RoundStarted",
+				"kind": "nested"
+			},
+			{
+				"name": "RoundEnded",
+				"type": "moon_or_doom::contract::MoonOrDoom::RoundEnded",
+				"kind": "nested"
+			},
+			{
+				"name": "BetPlaced",
+				"type": "moon_or_doom::contract::MoonOrDoom::BetPlaced",
+				"kind": "nested"
+			}
+		]
+	}
+]
