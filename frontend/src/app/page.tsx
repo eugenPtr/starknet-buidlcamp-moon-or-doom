@@ -147,11 +147,11 @@ export default function Home() {
       checkForEvents(contract, blockNumber);
     }
       
-    if (chartRef.current) {
-      // Access the chart instance via chartRef.current.chart
-      const chart = chartRef.current.chart;
-      console.log('Chart instance:', chart);
-    }
+    // if (chartRef.current) {
+    //   // Access the chart instance via chartRef.current.chart
+    //   const chart = chartRef.current.chart;
+    //   console.log(chart);
+    // }
 
   }, [contract, blockNumber, checkForEvents]);
 

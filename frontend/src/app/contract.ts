@@ -48,8 +48,9 @@ export async function startRound() {
 
 
 export const Bet = {
-  MOON: new CairoCustomEnum({MOON: 0}),
-  DOOM: new CairoCustomEnum({DOOM: 1})
+  None: new CairoCustomEnum({None: 0}),
+  MOON: new CairoCustomEnum({MOON: 1}),
+  DOOM: new CairoCustomEnum({DOOM: 2})
 }
 
 export async function placeBet(bet: CairoCustomEnum) {
